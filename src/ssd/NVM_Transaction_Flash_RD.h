@@ -31,6 +31,8 @@ namespace SSD_Components
 		NVM_Transaction_Flash_WR* RelatedWrite;		//Is this read request related to another write request and provides update data (for partial page write)
 		page_status_type read_sectors_bitmap;
 		data_timestamp_type DataTimeStamp;
+
+		NVM_Transaction_Flash_RD* originTr;
 	};
 }
 

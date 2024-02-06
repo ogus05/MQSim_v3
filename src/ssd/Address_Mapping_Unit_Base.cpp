@@ -44,4 +44,8 @@ namespace SSD_Components
 	{
 		return sharing_mode;
 	}
+    void Address_Mapping_Unit_Base::ConnectDCMServiedTransactionHandler(void (*dcmServicedTransactionHandler)(NVM_Transaction_Flash *))
+    {
+		this->dcmServicedTransactionHandler = dcmServicedTransactionHandler;
+    }
 }

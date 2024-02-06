@@ -41,6 +41,22 @@ namespace SSD_Components {
 		}
 		_my_instance = this;
 	}
+	NVM_PHY_ONFI_NVDDR2::~NVM_PHY_ONFI_NVDDR2(){
+		for (unsigned int channelID = 0; channelID < channel_count; channelID++) {
+			for(unsigned int chipID = 0; chipID < chip_no_per_channel; chipID++) {
+				delete[] bookKeepingTable[channelID][chipID].Die_book_keeping_records;
+			}
+			delete[] bookKeepingTable[channelID];
+			for(auto& e : WaitingCopybackWrites[channelID]){
+				delete e;
+			}
+		}
+		delete[] bookKeepingTable;
+		delete[] WaitingReadTX;
+		delete[] WaitingGCRead_TX;
+		delete[] WaitingMappingRead_TX;
+		delete[] WaitingCopybackWrites;
+	}
 
 	void NVM_PHY_ONFI_NVDDR2::Setup_triggers()
 	{
@@ -326,7 +342,7 @@ namespace SSD_Components {
 	{
 		int i = 0;
 		for (auto &address : command->Address) {
-			if (address.PlaneID == read_transaction->Address.PlaneID) {
+			if (address.PlaneID == read_transaction->Address.PlaneID && command->Meta_data[i].LPA != NO_LPA) {
 				read_transaction->LPA = command->Meta_data[i].LPA;
 			}
 			i++;
