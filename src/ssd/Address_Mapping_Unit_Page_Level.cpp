@@ -5,6 +5,7 @@
 #include "Address_Mapping_Unit_Page_Level.h"
 #include "Stats.h"
 #include "../utils/Logical_Address_Partitioning_Unit.h"
+#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -1180,6 +1181,7 @@ namespace SSD_Components
 					NVM::FlashMemory::Physical_Page_Address addr;
 					Convert_ppa_to_address(old_ppa, addr);
 					block_manager->Invalidate_page_in_block(transaction->Stream_id, addr);
+					Stats2::handleReadAndModify(count_sector_no_from_status_bitmap(0));
 				} else {
 					page_status_type read_pages_bitmap = status_intersection ^ prev_page_status;
 					NVM_Transaction_Flash_RD *update_read_tr = new NVM_Transaction_Flash_RD(transaction->Source, transaction->Stream_id,
@@ -1189,6 +1191,7 @@ namespace SSD_Components
 					block_manager->Read_transaction_issued(update_read_tr->Address);//Inform block manager about a new transaction as soon as the transaction's target address is determined
 					block_manager->Invalidate_page_in_block(transaction->Stream_id, update_read_tr->Address);
 					transaction->RelatedRead = update_read_tr;
+					Stats2::handleReadAndModify(count_sector_no_from_status_bitmap(read_pages_bitmap));
 				}
 			}
 		}
@@ -1595,9 +1598,11 @@ namespace SSD_Components
 			page_status_type readSectorsBitmap = 0;
 			LPA_type startLPN = get_start_LPN_in_MVP(mvpn);
 			LPA_type endLPN = get_end_LPN_in_MVP(mvpn);
+			uint32_t countCleaningEntries = 0;
 			for (LPA_type lpn_itr = startLPN; lpn_itr <= endLPN; lpn_itr++) {
 				if (domains[stream_id]->CMT->Exists(stream_id, lpn_itr)) {
 					if (domains[stream_id]->CMT->Is_dirty(stream_id, lpn_itr)) {
+						countCleaningEntries += 1;
 						domains[stream_id]->CMT->Make_clean(stream_id, lpn_itr);
 						domains[stream_id]->GlobalMappingTable[lpn_itr].PPA = domains[stream_id]->CMT->Retrieve_ppa(stream_id, lpn_itr);
 					} else {
@@ -1609,6 +1614,7 @@ namespace SSD_Components
 					}
 				}
 			}
+			Stats2::handleCleaningCache(countCleaningEntries);
 
 			//Read the unchaged mapping entries from flash to merge them with updated parts of MVPN
 			NVM_Transaction_Flash_RD* readTR = NULL;
@@ -1701,6 +1707,7 @@ namespace SSD_Components
 			_my_instance->ftl->TSU->Prepare_for_transaction_submit();
 			MVPN_type mvpn = (MVPN_type)((NVM_Transaction_Flash_RD*)transaction)->Content;
 			std::multimap<MVPN_type, LPA_type>::iterator it = _my_instance->domains[transaction->Stream_id]->ArrivingMappingEntries.find(mvpn);
+			uint32_t handledByArrivingMappingEntries = 0;
 			while (it != _my_instance->domains[transaction->Stream_id]->ArrivingMappingEntries.end()) {
 				if ((*it).first == mvpn) {
 					LPA_type lpa = (*it).second;
@@ -1743,12 +1750,14 @@ namespace SSD_Components
 							}
 							_my_instance->domains[transaction->Stream_id]->Waiting_unmapped_program_transactions.erase(it2++);
 						}
+						handledByArrivingMappingEntries++;
 					}
 				} else {
 					break;
 				}
 				_my_instance->domains[transaction->Stream_id]->ArrivingMappingEntries.erase(it++);
 			}
+			Stats2::handleMapping(handledByArrivingMappingEntries, Simulator->Time() - transaction->Issue_time, transaction->PPA);
 			_my_instance->ftl->TSU->Schedule();
 		}
 	}
@@ -1860,6 +1869,7 @@ namespace SSD_Components
 			Stats::Total_flash_reads_for_mapping++;
 			Stats::Total_flash_reads_for_mapping_per_stream[stream_id]++;
 
+			Stats2::handleMappingRelatedToGC(ppn);
 			handle_transaction_serviced_signal_from_PHY(readTR);
 			
 			delete readTR;

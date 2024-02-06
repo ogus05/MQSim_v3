@@ -4,6 +4,7 @@
 #include "NVM_Transaction_Flash_RD.h"
 #include "NVM_Transaction_Flash_WR.h"
 #include "FTL.h"
+#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -205,11 +206,14 @@ namespace SSD_Components
 				{
 					std::list<NVM_Transaction*>::iterator it = user_request->Transaction_list.begin();
 					while (it != user_request->Transaction_list.end()) {
+						bool handleAllSectors = false;
 						NVM_Transaction_Flash_RD* tr = (NVM_Transaction_Flash_RD*)(*it);
 						if (per_stream_cache[tr->Stream_id]->Exists(tr->Stream_id, tr->LPA)) {
 							page_status_type available_sectors_bitmap = per_stream_cache[tr->Stream_id]->Get_slot(tr->Stream_id, tr->LPA).State_bitmap_of_existing_sectors & tr->read_sectors_bitmap;
 							if (available_sectors_bitmap == tr->read_sectors_bitmap) {
 								user_request->Sectors_serviced_from_cache += count_sector_no_from_status_bitmap(tr->read_sectors_bitmap);
+								handleAllSectors = true;
+								delete tr;
 								user_request->Transaction_list.erase(it++);//the ++ operation should happen here, otherwise the iterator will be part of the list after erasing it from the list
 							} else if (available_sectors_bitmap != 0) {
 								user_request->Sectors_serviced_from_cache += count_sector_no_from_status_bitmap(available_sectors_bitmap);
@@ -219,11 +223,20 @@ namespace SSD_Components
 							} else {
 								it++;
 							}
+							if(!handleAllSectors){
+								Stats2::handleCache(tr->Data_and_metadata_size_in_byte / SECTOR_SIZE_IN_BYTE);
+							}
 						} else {
 							it++;
 						}
+						if(handleAllSectors){
+							Stats::Cache_hits++;
+							Stats::readTR_Cache_hits++;
+						} else{
+							Stats::Cache_miss++;
+							Stats::readTR_Cache_miss++;
+						}
 					}
-
 					if (user_request->Sectors_serviced_from_cache > 0) {
 						Memory_Transfer_Info* transfer_info = new Memory_Transfer_Info;
 						transfer_info->Size_in_bytes = user_request->Sectors_serviced_from_cache * SECTOR_SIZE_IN_BYTE;

@@ -9,6 +9,7 @@
 #include "exec/Host_System.h"
 #include "utils/rapidxml/rapidxml.hpp"
 #include "utils/DistributionTypes.h"
+#include "ssd/Stats2.h"
 
 using namespace std;
 
@@ -294,11 +295,15 @@ int main(int argc, char* argv[])
 		Host_System host(&exec_params->Host_Configuration, exec_params->SSD_Device_Configuration.Enabled_Preconditioning, ssd.Host_interface);
 		host.Attach_ssd_device(&ssd);
 
+		Stats2::Init_Stats2(ssd_config_file_path, workload_defs_file_path);
+
 		Simulator->Start_simulation();
 		for (auto io_flow_def = (*io_scen)->begin(); io_flow_def != (*io_scen)->end(); io_flow_def++) {
 			delete *io_flow_def;
 		}
 		delete *io_scen;
+
+		Stats2::Clear_Stats2();
 
 		time_t end_time = time(0);
 		dt = ctime(&end_time);

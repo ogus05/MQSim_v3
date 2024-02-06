@@ -3,6 +3,7 @@
 #include "Host_Interface_NVMe.h"
 #include "NVM_Transaction_Flash_RD.h"
 #include "NVM_Transaction_Flash_WR.h"
+#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -201,6 +202,7 @@ void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 																				 transaction_size * SECTOR_SIZE_IN_BYTE, lpa, NO_PPA, user_request, user_request->Priority_class, 0, access_status_bitmap, CurrentTimeStamp);
 			user_request->Transaction_list.push_back(transaction);
 			input_streams[user_request->Stream_id]->STAT_number_of_read_transactions++;
+			Stats2::handleExternalTransaction(transaction_size, 0);
 		}
 		else
 		{ //user_request->Type == UserRequestType::WRITE
@@ -208,6 +210,7 @@ void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 																				 transaction_size * SECTOR_SIZE_IN_BYTE, lpa, user_request, user_request->Priority_class, 0, access_status_bitmap, CurrentTimeStamp);
 			user_request->Transaction_list.push_back(transaction);
 			input_streams[user_request->Stream_id]->STAT_number_of_write_transactions++;
+			Stats2::handleExternalTransaction(transaction_size, 1);
 		}
 
 		lsa = lsa + transaction_size;

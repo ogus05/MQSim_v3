@@ -1,4 +1,5 @@
 #include "GC_and_WL_Unit_Base.h"
+#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -160,6 +161,7 @@ namespace SSD_Components
 				}
 				break;
 			case Transaction_Type::ERASE:
+				Stats2::handleGarbageCollection(Simulator->Time() - transaction->Issue_time, pbke->Blocks[transaction->Address.BlockID].Holds_mapping_data);
 				pbke->Ongoing_erase_operations.erase(pbke->Ongoing_erase_operations.find(transaction->Address.BlockID));
 				_my_instance->block_manager->Add_erased_block_to_pool(transaction->Address);
 				_my_instance->block_manager->GC_WL_finished(transaction->Address);

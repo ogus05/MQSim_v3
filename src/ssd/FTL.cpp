@@ -833,6 +833,30 @@ namespace SSD_Components
 		val = std::to_string(Stats::Total_flash_writes_for_mapping);
 		xmlwriter.Write_attribute_string_inline(attr, val);
 
+		attr = "Cache_Hits";
+		val = std::to_string(Stats::Cache_hits);
+		xmlwriter.Write_attribute_string_inline(attr, val);
+
+		attr = "Cache_Hits_For_Read";
+		val = std::to_string(Stats::readTR_Cache_hits);
+		xmlwriter.Write_attribute_string_inline(attr, val);
+
+		attr = "Cache_Hits_For_Write";
+		val = std::to_string(Stats::writeTR_Cache_hits);
+		xmlwriter.Write_attribute_string_inline(attr, val);
+
+		attr = "Cache_Misses";
+		val = std::to_string(Stats::Cache_miss);
+		xmlwriter.Write_attribute_string_inline(attr, val);
+
+		attr = "Cache_Misses_For_Read";
+		val = std::to_string(Stats::readTR_Cache_miss);
+		xmlwriter.Write_attribute_string_inline(attr, val);
+
+		attr = "Cache_Misses_For_Write";
+		val = std::to_string(Stats::writeTR_Cache_miss);
+		xmlwriter.Write_attribute_string_inline(attr, val);
+
 		attr = "CMT_Hits";
 		val = std::to_string(Stats::CMT_hits);
 		xmlwriter.Write_attribute_string_inline(attr, val);

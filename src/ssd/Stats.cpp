@@ -25,6 +25,8 @@ namespace SSD_Components
 	unsigned long Stats::Total_flash_reads_for_mapping_per_stream[MAX_SUPPORT_STREAMS] = { 0 };
 	unsigned long Stats::Total_flash_writes_for_mapping_per_stream[MAX_SUPPORT_STREAMS] = { 0 };
 	unsigned int***** Stats::Block_erase_histogram;
+	unsigned int  Stats::Cache_hits = 0, Stats::readTR_Cache_hits = 0, Stats::writeTR_Cache_hits = 0;
+	unsigned int  Stats::Cache_miss = 0, Stats::readTR_Cache_miss = 0, Stats::writeTR_Cache_miss = 0; 
 	unsigned int  Stats::CMT_hits = 0, Stats::readTR_CMT_hits = 0, Stats::writeTR_CMT_hits = 0;
 	unsigned int  Stats::CMT_miss = 0, Stats::readTR_CMT_miss = 0, Stats::writeTR_CMT_miss = 0;
 	unsigned int  Stats::total_CMT_queries = 0, Stats::total_readTR_CMT_queries = 0, Stats::total_writeTR_CMT_queries = 0;
@@ -66,6 +68,8 @@ namespace SSD_Components
 		IssuedEraseCMD = 0; IssuedInterleaveEraseCMD = 0; IssuedMultiplaneEraseCMD = 0; IssuedInterleaveMultiplaneEraseCMD = 0;
 		IssuedSuspendEraseCMD = 0;
 		Total_flash_reads_for_mapping = 0; Total_flash_writes_for_mapping = 0; 
+		Cache_hits = 0; readTR_Cache_hits = 0; writeTR_Cache_hits = 0;
+		Cache_miss = 0; readTR_Cache_miss = 0; writeTR_Cache_miss = 0;
 		CMT_hits = 0; readTR_CMT_hits = 0; writeTR_CMT_hits = 0;
 		CMT_miss = 0; readTR_CMT_miss = 0; writeTR_CMT_miss = 0;
 		total_CMT_queries = 0; total_readTR_CMT_queries = 0; total_writeTR_CMT_queries = 0;
