@@ -43,6 +43,8 @@ unsigned int Device_Parameter_Set::Chip_No_Per_Channel = 4;
 SSD_Components::ONFI_Protocol Device_Parameter_Set::Flash_Comm_Protocol = SSD_Components::ONFI_Protocol::NVDDR2;
 Flash_Parameter_Set Device_Parameter_Set::Flash_Parameters;
 
+unsigned int Device_Parameter_Set::SL_Max_Block_Count = 256;
+
 void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 {
 	std::string tmp;
@@ -369,6 +371,11 @@ void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 	}
 	xmlwriter.Write_attribute_string(attr, val);
 
+	attr = "SL_Max_Block_Count";
+	val = std::to_string(SL_Max_Block_Count);
+	xmlwriter.Write_attribute_string(attr, val);
+
+
 	Flash_Parameters.XML_serialize(xmlwriter);
 
 	xmlwriter.Write_close_tag();
@@ -625,8 +632,10 @@ void Device_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
 				} else {
 					PRINT_ERROR("Unknown flash communication protocol type specified in the SSD configuration file")
 				}
-			}
-			else if (strcmp(param->name(), "Flash_Parameter_Set") == 0)
+			} else if(strcmp(param->name(), "SL_Max_Block_Count") == 0){
+				std::string val = param->value();
+				SL_Max_Block_Count = std::stoul(val);
+			} else if (strcmp(param->name(), "Flash_Parameter_Set") == 0)
 			{
 				Flash_Parameters.XML_deserialize(param);
 			}

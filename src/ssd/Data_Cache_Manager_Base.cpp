@@ -1,5 +1,6 @@
 #include "Data_Cache_Manager_Base.h"
 #include "FTL.h"
+#include "Sector_Log.h"
 
 namespace SSD_Components
 {
@@ -21,7 +22,13 @@ namespace SSD_Components
 		}
 	}
 
-	Data_Cache_Manager_Base::~Data_Cache_Manager_Base() {}
+	Data_Cache_Manager_Base::~Data_Cache_Manager_Base() {
+		delete[] caching_mode_per_input_stream;
+		for(auto& e : *sectorLog){
+			delete e;
+		}
+		delete sectorLog;
+	}
 
 	void Data_Cache_Manager_Base::Setup_triggers()
 	{
@@ -64,7 +71,12 @@ namespace SSD_Components
 		_my_instance->process_new_user_request(user_request);
 	}
 
-	void Data_Cache_Manager_Base::Set_host_interface(Host_Interface_Base* host_interface)
+    void Data_Cache_Manager_Base::connectSectorLog(std::vector<Sector_Log*>* sectorLogList)
+    {
+		this->sectorLog = sectorLogList;
+    }
+
+    void Data_Cache_Manager_Base::Set_host_interface(Host_Interface_Base* host_interface)
 	{
 		this->host_interface = host_interface;
 	}

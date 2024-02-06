@@ -55,6 +55,9 @@ public:
 	static unsigned int Chip_No_Per_Channel;
 	static SSD_Components::ONFI_Protocol Flash_Comm_Protocol;
 	static Flash_Parameter_Set Flash_Parameters;
+
+	static unsigned int SL_Max_Block_Count;
+
 	void XML_serialize(Utils::XmlWriter& xmlwriter);
 	void XML_deserialize(rapidxml::xml_node<> *node);
 };

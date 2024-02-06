@@ -108,7 +108,20 @@ namespace SSD_Components
 		plane_record->Check_bookkeeping_correctness(page_address);
 	}
 
-	inline void Flash_Block_Manager::Invalidate_page_in_block(const stream_id_type stream_id, const NVM::FlashMemory::Physical_Page_Address& page_address)
+    void Flash_Block_Manager::Allocate_page_in_block_for_sectorLog_write(const stream_id_type stream_id, NVM::FlashMemory::Physical_Page_Address& block_address)
+    {
+		PlaneBookKeepingType* plane_record = &plane_manager[block_address.ChannelID][block_address.ChipID][block_address.DieID][block_address.PlaneID];
+		Block_Pool_Slot_Type* block_record = &plane_record->Blocks[block_address.BlockID];
+		if(block_record->Current_page_write_index >= pages_no_per_block || !block_record->Holds_sector_data){
+			PRINT_ERROR("ERROR in Allocate_page_in_block_for_sectorLog_write")
+		}
+		plane_record->Valid_pages_count++;
+		plane_record->Free_pages_count--;
+		block_address.PageID = block_record->Current_page_write_index++;
+		plane_record->Check_bookkeeping_correctness(block_address);
+    }
+
+    inline void Flash_Block_Manager::Invalidate_page_in_block(const stream_id_type stream_id, const NVM::FlashMemory::Physical_Page_Address& page_address)
 	{
 		PlaneBookKeepingType* plane_record = &plane_manager[page_address.ChannelID][page_address.ChipID][page_address.DieID][page_address.PlaneID];
 		plane_record->Invalid_pages_count++;

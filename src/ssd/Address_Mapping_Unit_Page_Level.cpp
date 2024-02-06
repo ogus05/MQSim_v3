@@ -5,6 +5,8 @@
 #include "Address_Mapping_Unit_Page_Level.h"
 #include "Stats.h"
 #include "../utils/Logical_Address_Partitioning_Unit.h"
+#include "Sector_Log.h"
+
 #include "Stats2.h"
 
 namespace SSD_Components
@@ -1958,4 +1960,38 @@ namespace SSD_Components
 		}
 		ftl->TSU->Schedule();
 	}
+
+    void Address_Mapping_Unit_Page_Level::allocate_block_for_sectorLog(const stream_id_type &stream_id, std::list<Sector_Log_WF_Entry *> &sectorLogWF)
+    {
+		uint32_t curPlaneFreeBlockCount = 0;
+		NVM::FlashMemory::Physical_Page_Address* newBlockAddr = new NVM::FlashMemory::Physical_Page_Address();
+		PlaneBookKeepingType* planeRecord = NULL;
+		for(uint32_t channelID = 0; channelID < channel_count; channelID++){
+			for(uint32_t chipID = 0; chipID < chip_no_per_channel; chipID++){
+				for(uint32_t dieID = 0; dieID < die_no_per_chip; dieID++){
+					for(uint32_t planeID = 0; planeID < plane_no_per_die; planeID++){
+						planeRecord = &block_manager->plane_manager[channelID][chipID][dieID][planeID];
+						if(planeRecord->Get_free_block_pool_size() > curPlaneFreeBlockCount){
+							newBlockAddr->ChannelID = channelID;
+							newBlockAddr->ChipID = chipID;
+							newBlockAddr->DieID = dieID;
+							newBlockAddr->PlaneID = planeID;
+							curPlaneFreeBlockCount = planeRecord->Get_free_block_pool_size();
+						}
+					}
+				}
+			}
+		}
+		PlaneBookKeepingType* planeRecordToReturn = &block_manager->plane_manager[newBlockAddr->ChannelID][newBlockAddr->ChipID][newBlockAddr->DieID][newBlockAddr->PlaneID];
+		Block_Pool_Slot_Type* freeBlock = planeRecordToReturn->Get_a_free_block(stream_id, false);
+		freeBlock->Holds_sector_data = true;
+		newBlockAddr->BlockID = freeBlock->BlockID;
+		sectorLogWF.push_back(new Sector_Log_WF_Entry(newBlockAddr, planeRecordToReturn, freeBlock));
+    }
+ 
+    void Address_Mapping_Unit_Page_Level::erase_block_from_sectorLog(NVM::FlashMemory::Physical_Page_Address &block_addr)
+    {
+		block_manager->Add_erased_block_to_pool(block_addr);
+		
+    }
 }

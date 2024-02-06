@@ -23,14 +23,12 @@ void command_line_args(char* argv[], string& input_file_path, string& workload_f
 		char file_path_switch[] = "-i";
 		if (arg.compare(0, strlen(file_path_switch), file_path_switch) == 0) {
 			input_file_path.assign(argv[++arg_cntr]);
-			//cout << input_file_path << endl;
 			continue;
 		}
 
 		char workload_path_switch[] = "-w";
 		if (arg.compare(0, strlen(workload_path_switch), workload_path_switch) == 0) {
 			workload_file_path.assign(argv[++arg_cntr]);
-			//cout << workload_file_path << endl;
 			continue;
 		}
 	}

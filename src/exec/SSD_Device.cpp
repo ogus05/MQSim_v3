@@ -16,6 +16,7 @@
 #include "../ssd/ONFI_Channel_NVDDR2.h"
 #include "../ssd/NVM_PHY_ONFI_NVDDR2.h"
 #include "../utils/Logical_Address_Partitioning_Unit.h"
+#include "../ssd/Sector_Log.h"
 
 SSD_Device *SSD_Device::my_instance; //Used in static functions
 
@@ -365,6 +366,12 @@ SSD_Device::SSD_Device(Device_Parameter_Set *parameters, std::vector<IO_Flow_Par
 		}
 		Simulator->AddObject(device->Host_interface);
 		dcm->Set_host_interface(device->Host_interface);
+
+		std::vector<SSD_Components::Sector_Log*>* sectorLog = new std::vector<SSD_Components::Sector_Log*>();
+		for(uint32_t i = 0; i < stream_count; i++){
+			sectorLog->push_back(new SSD_Components::Sector_Log(i, parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, parameters->Flash_Parameters.Page_No_Per_Block, parameters->SL_Max_Block_Count, (SSD_Components::Address_Mapping_Unit_Page_Level*)amu, tsu, dcm));
+		}
+		dcm->connectSectorLog(sectorLog);
 		break;
 	}
 	default:

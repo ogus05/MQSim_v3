@@ -45,6 +45,9 @@ public:
 private:
 	Flash_Transaction_Queue **UserReadTRQueue;
 	Flash_Transaction_Queue **UserWriteTRQueue;
+	Flash_Transaction_Queue **MergeReadTRQueue;
+	Flash_Transaction_Queue **MergeWriteTRQueue;
+	Flash_Transaction_Queue **MergeEraseTRQueue;
 	Flash_Transaction_Queue **GCReadTRQueue;
 	Flash_Transaction_Queue **GCWriteTRQueue;
 	Flash_Transaction_Queue **GCEraseTRQueue;
