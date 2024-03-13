@@ -7,7 +7,6 @@
 #include "../nvm_chip/flash_memory/FlashTypes.h"
 #include "SSD_Defs.h"
 #include "Data_Cache_Manager_Base.h"
-#include "Data_Cache_Flash.h"
 #include "NVM_Transaction_Flash.h"
 
 namespace SSD_Components
@@ -58,7 +57,7 @@ namespace SSD_Components
 		sim_time_type next_bloom_filter_reset_milestone = 0;
 
 		static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
-		void service_dram_access_request(Memory_Transfer_Info* request_info);
+		virtual void service_dram_access_request(Memory_Transfer_Info* request_info);
 	};
 }
 

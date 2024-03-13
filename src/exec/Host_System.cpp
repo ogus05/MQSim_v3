@@ -118,6 +118,20 @@ const std::vector<Host_Components::IO_Flow_Base*> Host_System::Get_io_flows()
 	return IO_flows;
 }
 
+void Host_System::Attach_start_running_fn(void(*Clear_Stats_FN)(bool))
+{
+	for(auto& e : IO_flows){
+		e->startRunningFnc = Clear_Stats_FN;
+	}
+}
+
+void Host_System::Clear_Stats()
+{
+	for(auto & flow : IO_flows){
+		flow->Clear_Stats();
+	}
+}
+
 void Host_System::Start_simulation()
 {
 	switch (ssd_device->Host_interface->GetType()) {

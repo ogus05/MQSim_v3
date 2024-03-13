@@ -16,7 +16,7 @@
 namespace SSD_Components
 {
 	class User_Request;
-
+	class CompactionInformation;
 	class NVM_Transaction_Flash : public NVM_Transaction
 	{
 	public:
@@ -34,6 +34,7 @@ namespace SSD_Components
 		bool Physical_address_determined;
 		sim_time_type Estimated_alone_waiting_time;//Used in scheduling methods, such as FLIN, where fairness and QoS is considered in scheduling
 		bool FLIN_Barrier;//Especially used in queue reordering in FLIN scheduler
+		CompactionInformation* compactionInfo;
 	private:
 
 	};

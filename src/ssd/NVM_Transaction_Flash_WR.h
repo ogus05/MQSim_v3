@@ -6,11 +6,14 @@
 #include "NVM_Transaction_Flash.h"
 #include "NVM_Transaction_Flash_RD.h"
 #include "NVM_Transaction_Flash_ER.h"
+#include "LSMBlockBuffer.h"
 
 namespace SSD_Components
 {
 	class NVM_Transaction_Flash_ER;
 	enum class WriteExecutionModeType { SIMPLE, COPYBACK };
+
+	class LSA_type;
 	
 	class NVM_Transaction_Flash_WR : public NVM_Transaction_Flash
 	{
@@ -34,6 +37,7 @@ namespace SSD_Components
 		page_status_type write_sectors_bitmap;
 		data_timestamp_type DataTimeStamp;
 		WriteExecutionModeType ExecutionMode;
+		std::list<LSA_type> lsa;
 	};
 }
 

@@ -21,6 +21,20 @@ namespace SSD_Components
 	{
 	}
 
+    void Input_Stream_Base::Clear_Stats()
+    {
+		STAT_number_of_read_requests = 0;
+		STAT_number_of_read_transactions = 0;
+		STAT_number_of_write_requests = 0;
+		STAT_number_of_write_transactions = 0;
+		STAT_sum_of_read_transactions_execution_time = 0;
+		STAT_sum_of_read_transactions_transfer_time = 0;
+		STAT_sum_of_read_transactions_waiting_time = 0;
+		STAT_sum_of_write_transactions_execution_time = 0;
+		STAT_sum_of_write_transactions_transfer_time = 0;
+		STAT_sum_of_write_transactions_waiting_time = 0;
+    }
+
 	Request_Fetch_Unit_Base::~Request_Fetch_Unit_Base()
 	{
 		for (auto &dma_info : dma_list) {
@@ -182,6 +196,13 @@ namespace SSD_Components
 		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_write_transactions_waiting_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 	
+    void Input_Stream_Manager_Base::Clear_Stats()
+    {
+		for(auto& e : input_streams){
+			e->Clear_Stats();
+		}
+    }
+
 	Request_Fetch_Unit_Base::Request_Fetch_Unit_Base(Host_Interface_Base* host_interface) :
 		host_interface(host_interface)
 	{

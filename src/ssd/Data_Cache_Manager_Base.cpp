@@ -1,5 +1,6 @@
 #include "Data_Cache_Manager_Base.h"
 #include "FTL.h"
+#include "LSMSectorLog.h"
 
 namespace SSD_Components
 {
@@ -19,9 +20,18 @@ namespace SSD_Components
 		for (unsigned int i = 0; i < stream_count; i++) {
 			this->caching_mode_per_input_stream[i] = caching_mode_per_input_stream[i];
 		}
+
+		sectorLog = NULL;
 	}
 
-	Data_Cache_Manager_Base::~Data_Cache_Manager_Base() {}
+	Data_Cache_Manager_Base::~Data_Cache_Manager_Base() {
+		if(sectorLog != NULL){
+			for(auto e : (*sectorLog)){
+				delete e;
+			}
+			delete sectorLog;
+		}
+	}
 
 	void Data_Cache_Manager_Base::Setup_triggers()
 	{
@@ -68,4 +78,18 @@ namespace SSD_Components
 	{
 		this->host_interface = host_interface;
 	}
+
+    void Data_Cache_Manager_Base::connectSectorLog(std::vector<LSMSectorLog *> *sectorLog)
+    {
+		this->sectorLog = sectorLog;
+    }
+	
+    void Data_Cache_Manager_Base::sendToAMU(std::list<SSD_Components::NVM_Transaction *> transactionList)
+    {
+		if(sectorLog == NULL){
+			static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(transactionList);
+		} else{
+			sectorLog->at(transactionList.front()->Stream_id)->handleInputTr(transactionList);
+		}
+    }
 }

@@ -1958,4 +1958,41 @@ namespace SSD_Components
 		}
 		ftl->TSU->Schedule();
 	}
+    NVM::FlashMemory::Physical_Page_Address* Address_Mapping_Unit_Page_Level::allocate_block_for_sectorLog(const stream_id_type &stream_id)
+    {
+		uint32_t curPlaneFreeBlockCount = 0;
+		NVM::FlashMemory::Physical_Page_Address* newBlockAddr = new NVM::FlashMemory::Physical_Page_Address();
+		PlaneBookKeepingType* planeRecord = NULL;
+		for(uint32_t channelID = 0; channelID < channel_count; channelID++){
+			for(uint32_t chipID = 0; chipID < chip_no_per_channel; chipID++){
+				for(uint32_t dieID = 0; dieID < die_no_per_chip; dieID++){
+					for(uint32_t planeID = 0; planeID < plane_no_per_die; planeID++){
+						planeRecord = &block_manager->plane_manager[channelID][chipID][dieID][planeID];
+						if(planeRecord->Get_free_block_pool_size() > curPlaneFreeBlockCount){
+							newBlockAddr->ChannelID = channelID;
+							newBlockAddr->ChipID = chipID;
+							newBlockAddr->DieID = dieID;
+							newBlockAddr->PlaneID = planeID;
+							curPlaneFreeBlockCount = planeRecord->Get_free_block_pool_size();
+						}
+					}
+				}
+			}
+		}
+		PlaneBookKeepingType* selectedPlaneRecord = &block_manager->plane_manager[newBlockAddr->ChannelID][newBlockAddr->ChipID][newBlockAddr->DieID][newBlockAddr->PlaneID];
+		Block_Pool_Slot_Type* freeBlock = selectedPlaneRecord->Get_a_free_block(stream_id, false);
+		freeBlock->Holds_sector_data = true;
+		newBlockAddr->BlockID = freeBlock->BlockID;
+		selectedPlaneRecord->Valid_pages_count += pages_no_per_block;
+		selectedPlaneRecord->Free_pages_count -= pages_no_per_block;
+		selectedPlaneRecord->Check_bookkeeping_correctness(*newBlockAddr);
+		return newBlockAddr;
+    }
+ 
+    void Address_Mapping_Unit_Page_Level::erase_block_from_sectorLog(NVM::FlashMemory::Physical_Page_Address &block_addr)
+    {
+		block_manager->Get_plane_bookkeeping_entry(block_addr)->Blocks[block_addr.BlockID].Invalid_page_count += pages_no_per_block;
+		block_manager->Add_erased_block_to_pool(block_addr);
+		
+	}
 }

@@ -12,40 +12,21 @@ bool Stats2::printStats2 = false;
 
 std::vector<uint64_t> Stats2::mappingRelatedToGC = std::vector<uint64_t>();
 
-void Stats2::Init_Stats2(std::string ssd_config_file_path, std::string workload_defs_file_path)
+void Stats2::Init_Stats2(std::string workloadName, bool isPrint)
 {
-    std::cout << "Stats2 - 0. skip / 1. print." << std::endl;
-    std::cin >> printStats2;
+    printStats2 = isPrint;
     if(printStats2){
-        std::cout << "Start printing Stats2" << std::endl;
-        if(ssd_config_file_path.find("_") == std::string::npos || workload_defs_file_path.find("_") == std::string::npos){
-            std::cout << "If you want to print Stats2, ssdconfig and workload file path must include \"_\"" << std::endl;
-            std::cout << "e.g) ssdconfig_test.xml / workload_test.xml" << std::endl;
-            exit(0);
-        }
-        std::string workloadName = ssd_config_file_path.substr(ssd_config_file_path.find_last_of("_") + 1, ssd_config_file_path.find_last_of(".") - ssd_config_file_path.find_last_of("_") - 1) \
-			+ workload_defs_file_path.substr(workload_defs_file_path.find_last_of("_"), workload_defs_file_path.find_last_of(".") - workload_defs_file_path.find_last_of("_"));
-        
-        struct stat info;
-        if(stat("Stats2", &info) != 0){
-            if(mkdir("Stats2", 0777) == -1){
-                std::cout << "Stats2 - error in create directory" << std::endl;
-                exit(0);
-            }
-        }
-
-        OFS_EXTERNALTRANSACTION = fopen(("Stats2/ET_" + workloadName).c_str(), "w");
-        OFS_CACHE = fopen(("Stats2/CACHE_" + workloadName).c_str(), "w");
-        OFS_MAPPING = fopen(("Stats2/MAPPING_" + workloadName).c_str(), "w");
-        OFS_GC = fopen(("Stats2/GC_" + workloadName).c_str(), "w");
-        OFS_READANDMODIFY = fopen(("Stats2/RAM_" + workloadName).c_str(), "w");
-        OFS_CLEANING = fopen(("Stats2/CLEANING_" + workloadName).c_str(), "w");
-    } else{
-        std::cout << "Stop printing Stats2" << std::endl;
+        std::cout << printStats2 << std::endl;
+        OFS_EXTERNALTRANSACTION = fopen(("traces/ET/" + workloadName).c_str(), "w");
+        OFS_CACHE = fopen(("traces/CACHE/" + workloadName).c_str(), "w");
+        OFS_MAPPING = fopen(("traces/MAPPING/" + workloadName).c_str(), "w");
+        OFS_GC = fopen(("traces/GC/" + workloadName).c_str(), "w");
+        OFS_READANDMODIFY = fopen(("traces/RAM/" + workloadName).c_str(), "w");
+        OFS_CLEANING = fopen(("traces/CLEANING/" + workloadName).c_str(), "w");
     }
 }
 
-void Stats2::Clear_Stats2(){
+void Stats2::Close_Stats2(){
     if(printStats2){
         fclose(OFS_EXTERNALTRANSACTION);
         fclose(OFS_CACHE);

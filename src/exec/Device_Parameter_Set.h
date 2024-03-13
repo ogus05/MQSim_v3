@@ -57,6 +57,10 @@ public:
 	static Flash_Parameter_Set Flash_Parameters;
 	void XML_serialize(Utils::XmlWriter& xmlwriter);
 	void XML_deserialize(rapidxml::xml_node<> *node);
+
+	static std::vector<uint32_t> SL_BlocksPerLevel;
+	static uint32_t writeBlockBufferSizeInBlocks;
+	static uint32_t readBlockBufferSizeInBlocks;
 };
 
 #endif // !DEVICE_PARAMETER_SET_H
