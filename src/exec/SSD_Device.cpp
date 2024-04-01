@@ -16,6 +16,7 @@
 #include "../ssd/ONFI_Channel_NVDDR2.h"
 #include "../ssd/NVM_PHY_ONFI_NVDDR2.h"
 #include "../utils/Logical_Address_Partitioning_Unit.h"
+#include "../ssd/LSMSectorLog.h"
 
 SSD_Device *SSD_Device::my_instance; //Used in static functions
 
@@ -365,6 +366,15 @@ SSD_Device::SSD_Device(Device_Parameter_Set *parameters, std::vector<IO_Flow_Par
 		}
 		Simulator->AddObject(device->Host_interface);
 		dcm->Set_host_interface(device->Host_interface);
+
+		if(parameters->SL_BlocksPerLevel.at(0) != 0){
+			std::vector<SSD_Components::LSMSectorLog*>* sectorLog = new std::vector<SSD_Components::LSMSectorLog*>();
+			for(uint32_t i = 0; i < stream_count; i++){
+				sectorLog->push_back(new SSD_Components::LSMSectorLog(i, parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, parameters->Flash_Parameters.Page_No_Per_Block, 
+					parameters->writeBlockBufferSizeInBlocks, parameters->readBlockBufferSizeInBlocks, parameters->SL_BlocksPerLevel, (SSD_Components::Address_Mapping_Unit_Page_Level*)amu, tsu, dcm));
+			}
+			dcm->connectSectorLog(sectorLog);
+		}
 		break;
 	}
 	default:
@@ -391,6 +401,7 @@ SSD_Device::~SSD_Device()
 	delete this->Firmware;
 	delete this->Cache_manager;
 	delete this->Host_interface;
+
 }
 
 void SSD_Device::Attach_to_host(Host_Components::PCIe_Switch *pcie_switch)
@@ -460,4 +471,22 @@ LPA_type SSD_Device::Convert_host_logical_address_to_device_address(LHA_type lha
 page_status_type SSD_Device::Find_NVM_subunit_access_bitmap(LHA_type lha)
 {
 	return my_instance->Firmware->Find_NVM_subunit_access_bitmap(lha);
+}
+
+void SSD_Device::Clear_Stats()
+{
+	(this->Host_interface)->Clear_Stats();
+	if(Memory_Type == NVM::NVM_Type::FLASH){
+		((SSD_Components::FTL *)this->Firmware)->Clear_Stats();
+		((SSD_Components::FTL *)this->Firmware)->TSU->Clear_Stats();
+
+		for (unsigned int channel_cntr = 0; channel_cntr < Channel_count; channel_cntr++)
+		{
+			for (unsigned int chip_cntr = 0; chip_cntr < Chip_no_per_channel; chip_cntr++)
+			{
+				((SSD_Components::ONFI_Channel_NVDDR2 *)Channels[channel_cntr])->Chips[chip_cntr]->Clear_Stats();
+			}
+		}
+	}
+	
 }

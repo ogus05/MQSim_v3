@@ -60,6 +60,8 @@ namespace Host_Components
 		uint32_t Get_generated_request_count();
 		uint32_t Get_serviced_request_count();//in microseconds
 		uint32_t Get_device_response_time();//in microseconds
+		uint32_t Get_device_read_response_time();
+		uint32_t Get_device_write_response_time();
 		uint32_t Get_min_device_response_time();//in microseconds
 		uint32_t Get_max_device_response_time();//in microseconds
 		uint32_t Get_end_to_end_request_delay();//in microseconds
@@ -68,6 +70,9 @@ namespace Host_Components
 		void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter);
 		virtual void Get_statistics(Utils::Workload_Statistics& stats, LPA_type(*Convert_host_logical_address_to_device_address)(LHA_type lha),
 			page_status_type(*Find_NVM_subunit_access_bitmap)(LHA_type lha)) = 0;
+		void Clear_Stats();
+		void(*startRunningFnc)(bool printStats2);
+		
 	protected:
 		uint16_t flow_id;
 		double initial_occupancy_ratio;//The initial amount of valid logical pages when pereconditioning is performed

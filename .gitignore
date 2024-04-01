@@ -1,3 +1,6 @@
 MQSim
 build/
-
+**/*.xml
+.vscode
+Stats2
+traces

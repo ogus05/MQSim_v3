@@ -64,6 +64,7 @@ public:
 		*/
 	virtual void Schedule() = 0;
 	virtual void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter &xmlwriter);
+	virtual void Clear_Stats() = 0;
 
 protected:
 	FTL *ftl;

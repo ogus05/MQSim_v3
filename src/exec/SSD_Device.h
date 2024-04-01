@@ -51,7 +51,7 @@ public:
 
 	unsigned int Channel_count;
 	unsigned int Chip_no_per_channel;
-
+	void Clear_Stats();
 private:
 	static SSD_Device * my_instance;//Used in static functions
 };

@@ -27,6 +27,10 @@ public:
 
 	void Attach_ssd_device(SSD_Device* ssd_device);
 	const std::vector<Host_Components::IO_Flow_Base*> Get_io_flows();
+	
+	void Attach_start_running_fn(void(*Clear_Stats_FN)(bool));
+
+	void Clear_Stats();
 private:
 	Host_Components::PCIe_Root_Complex* PCIe_root_complex;
 	Host_Components::PCIe_Link* Link;

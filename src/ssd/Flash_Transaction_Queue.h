@@ -15,6 +15,7 @@ namespace SSD_Components
 		Flash_Transaction_Queue();
 		Flash_Transaction_Queue(std::string id);
 		void Set_id(std::string id);
+		std::string Get_id();
 		void push_back(NVM_Transaction_Flash* const&);
 		void push_front(NVM_Transaction_Flash* const&);
 		std::list<NVM_Transaction_Flash*>::iterator insert(list<NVM_Transaction_Flash*>::iterator position, NVM_Transaction_Flash* const& transaction);
@@ -22,6 +23,7 @@ namespace SSD_Components
 		void remove(std::list<NVM_Transaction_Flash*>::iterator const& itr_pos);
 		void pop_front();
 		void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter);
+		void Clear_Stats();
 	private:
 		std::string id;
 		Queue_Probe RequestQueueProbe;
