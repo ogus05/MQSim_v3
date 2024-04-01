@@ -43,10 +43,6 @@ unsigned int Device_Parameter_Set::Chip_No_Per_Channel = 4;
 SSD_Components::ONFI_Protocol Device_Parameter_Set::Flash_Comm_Protocol = SSD_Components::ONFI_Protocol::NVDDR2;
 Flash_Parameter_Set Device_Parameter_Set::Flash_Parameters;
 
-std::vector<uint32_t> Device_Parameter_Set::SL_BlocksPerLevel = std::vector<uint32_t>({2, 8, 32});
-uint32_t Device_Parameter_Set::writeBlockBufferSizeInBlocks = 1;
-uint32_t Device_Parameter_Set::readBlockBufferSizeInBlocks = 2; 
-
 void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 {
 	std::string tmp;
@@ -375,21 +371,6 @@ void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 
 	Flash_Parameters.XML_serialize(xmlwriter);
 
-	attr = "SL_MaxBlockSize";
-	for(auto blockCount : SL_BlocksPerLevel){
-		val += blockCount + ",";
-	}
-	val.pop_back();
-	xmlwriter.Write_attribute_string(attr, val);
-
-	attr = "writeBlockBufferSizeInBlocks";
-	val = std::to_string(writeBlockBufferSizeInBlocks);
-	xmlwriter.Write_attribute_string(attr, val);
-
-	attr = "readBlockBufferSizeInBlocks";
-	val = std::to_string(readBlockBufferSizeInBlocks);
-	xmlwriter.Write_attribute_string(attr, val);
-
 	xmlwriter.Write_close_tag();
 }
 
@@ -648,28 +629,7 @@ void Device_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
 			else if (strcmp(param->name(), "Flash_Parameter_Set") == 0)
 			{
 				Flash_Parameters.XML_deserialize(param);
-			} else if(strcmp(param->name(), "SL_BlocksPerLevel") == 0){
-				SL_BlocksPerLevel.clear();
-				char tmp[1000], *tmp2;
-				strncpy(tmp, param->value(), 1000);
-				std::string count = strtok(tmp, ",");
-				while (1) {
-					std::string::size_type sz;
-					SL_BlocksPerLevel.push_back(std::stoi(count, &sz));
-					tmp2 = strtok(NULL, ",");
-					if (tmp2 == NULL) {
-						break;
-					} else {
-						count = tmp2;
-					}
-				}
-			} else if(strcmp(param->name(), "writeBlockBufferSizeInBlocks") == 0){
-				std::string val = param->value();
-				writeBlockBufferSizeInBlocks = std::stoul(val);
-			} else if(strcmp(param->name(), "readBlockBufferSizeInBlocks") == 0){
-				std::string val = param->value();
-				readBlockBufferSizeInBlocks = std::stoul(val);
-			} 
+			}
 		}
 	}
 	catch (...)

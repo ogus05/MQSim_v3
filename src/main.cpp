@@ -11,18 +11,8 @@
 #include "utils/DistributionTypes.h"
 #include "ssd/Stats2.h"
 
-using namespace std;\
+using namespace std;
 
-SSD_Device* G_ssd;
-Host_System* G_host;
-string G_Stats2_workload_name;
-
-void Start_Running(bool printStats2){
-	G_host->Clear_Stats();
-	G_ssd->Clear_Stats();
-	Stats2::Init_Stats2(G_Stats2_workload_name, printStats2);
-	Simulator->running_milestone = CurrentTimeStamp;
-}
 
 void command_line_args(char* argv[], string& input_file_path, string& workload_file_path)
 {
@@ -303,16 +293,9 @@ int main(int argc, char* argv[])
 		SSD_Device ssd(&exec_params->SSD_Device_Configuration, &exec_params->Host_Configuration.IO_Flow_Definitions);//Create SSD_Device based on the specified parameters
 		exec_params->Host_Configuration.Input_file_path = workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of("."));//Create Host_System based on the specified parameters
 		Host_System host(&exec_params->Host_Configuration, exec_params->SSD_Device_Configuration.Enabled_Preconditioning, ssd.Host_interface);
-				
-		G_ssd = &ssd;
-		G_host = &host;
-		host.Attach_start_running_fn(Start_Running);
-
-		G_Stats2_workload_name = ssd_config_file_path.substr(ssd_config_file_path.find_last_of("_") + 1, ssd_config_file_path.find_last_of(".") - ssd_config_file_path.find_last_of("_") - 1) \
-			+ workload_defs_file_path.substr(workload_defs_file_path.find_last_of("_"), workload_defs_file_path.find_last_of(".") - workload_defs_file_path.find_last_of("_"));
-		Stats2::Init_Stats2(G_Stats2_workload_name, false);
-		
 		host.Attach_ssd_device(&ssd);
+
+		Stats2::Init_Stats2(ssd_config_file_path, workload_defs_file_path);
 
 		Simulator->Start_simulation();
 		for (auto io_flow_def = (*io_scen)->begin(); io_flow_def != (*io_scen)->end(); io_flow_def++) {
@@ -320,7 +303,7 @@ int main(int argc, char* argv[])
 		}
 		delete *io_scen;
 
-		Stats2::Close_Stats2();
+		Stats2::Clear_Stats2();
 
 		time_t end_time = time(0);
 		dt = ctime(&end_time);
@@ -330,7 +313,7 @@ int main(int argc, char* argv[])
 		PRINT_MESSAGE("");
 
 		PRINT_MESSAGE("Writing results to output file .......");
-		collect_results(ssd, host, (G_Stats2_workload_name + "_scenario_" + std::to_string(cntr) + ".xml").c_str());
+		collect_results(ssd, host, (workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of(".")) + "_scenario_" + std::to_string(cntr) + ".xml").c_str());
 	}
 	delete exec_params;
     cout << "Simulation complete; Press any key to exit." << endl;

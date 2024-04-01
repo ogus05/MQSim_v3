@@ -95,9 +95,6 @@ void IO_Flow_Trace_Based::Start_simulation()
 		Utils::Helper_Functions::Remove_cr(trace_line);
 		current_trace_line.clear();
 		Utils::Helper_Functions::Tokenize(trace_line, ASCIILineDelimiter, current_trace_line);
-		if(strcmp(current_trace_line[ASCIITraceTimeColumn].c_str(), "- ") == 0){
-			continue;
-		}
 		if (current_trace_line.size() != ASCIIItemsPerLine)
 		{
 			break;
@@ -137,10 +134,6 @@ void IO_Flow_Trace_Based::Validate_simulation_config()
 
 void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event *)
 {
-	if(startRunning){
-		startRunningFnc((total_replay_no - 1) == replay_counter);
-		startRunning = false;
-	}
 	Host_IO_Request *request = Generate_next_request();
 	if (request != NULL)
 	{
@@ -155,14 +148,6 @@ void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event *)
 			Utils::Helper_Functions::Remove_cr(trace_line);
 			current_trace_line.clear();
 			Utils::Helper_Functions::Tokenize(trace_line, ASCIILineDelimiter, current_trace_line);
-			if(strcmp(current_trace_line[ASCIITraceTimeColumn].c_str(), "- ") == 0){
-				PRINT_MESSAGE("End loading... start running.")
-				std::getline(trace_file, trace_line);
-				Utils::Helper_Functions::Remove_cr(trace_line);
-				current_trace_line.clear();
-				Utils::Helper_Functions::Tokenize(trace_line, ASCIILineDelimiter, current_trace_line);
-				startRunning = true;
-			}
 		}
 		else
 		{
@@ -222,9 +207,6 @@ void IO_Flow_Trace_Based::Get_statistics(Utils::Workload_Statistics &stats, LPA_
 		if (line_splitted.size() != ASCIIItemsPerLine)
 		{
 			break;
-		}
-		if(strcmp(current_trace_line[ASCIITraceTimeColumn].c_str(), "- ") == 0){
-			continue;
 		}
 		sim_time_type prev_time = last_request_arrival_time;
 		last_request_arrival_time = std::strtoull(line_splitted[ASCIITraceTimeColumn].c_str(), &pEnd, 10);

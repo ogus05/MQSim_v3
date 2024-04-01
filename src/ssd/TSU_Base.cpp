@@ -74,7 +74,6 @@ namespace SSD_Components
 		flash_die_ID_type dieID = sourceQueue1->front()->Address.DieID;
 		flash_page_ID_type pageID = sourceQueue1->front()->Address.PageID;
 		unsigned int planeVector = 0;
-		uint32_t planeVectorCount = 0;
 		static int issueCntr = 0;
 		
 		for (unsigned int i = 0; i < die_no_per_chip; i++)
@@ -91,23 +90,16 @@ namespace SSD_Components
 					{
 						(*it)->SuspendRequired = suspensionRequired;
 						planeVector |= 1 << (*it)->Address.PlaneID;
-						planeVectorCount++;
 						transaction_dispatch_slots.push_back(*it);
 						DEBUG(issueCntr++ << ": " << Simulator->Time() <<" Issueing Transaction - Type:" << TRTOSTR((*it)) << ", PPA:" << (*it)->PPA << ", LPA:" << (*it)->LPA << ", Channel: " << (*it)->Address.ChannelID << ", Chip: " << (*it)->Address.ChipID);
 						sourceQueue1->remove(it++);
-						if(sourceQueue1->Get_id().find("SLMerge") != std::string::npos){
-							break;
-						}
-						if(planeVectorCount == plane_no_per_die){
-							break;
-						}
 						continue;
 					}
 				}
 				it++;
 			}
 
-			if (sourceQueue2 != NULL && transaction_dispatch_slots.size() < plane_no_per_die && planeVectorCount != plane_no_per_die)
+			if (sourceQueue2 != NULL && transaction_dispatch_slots.size() < plane_no_per_die)
 			{
 				for (Flash_Transaction_Queue::iterator it = sourceQueue2->begin(); it != sourceQueue2->end();)
 				{
@@ -118,16 +110,9 @@ namespace SSD_Components
 						{
 							(*it)->SuspendRequired = suspensionRequired;
 							planeVector |= 1 << (*it)->Address.PlaneID;
-							planeVectorCount++;
 							transaction_dispatch_slots.push_back(*it);
 							DEBUG(issueCntr++ << ": " << Simulator->Time() << " Issueing Transaction - Type:" << TRTOSTR((*it)) << ", PPA:" << (*it)->PPA << ", LPA:" << (*it)->LPA << ", Channel: " << (*it)->Address.ChannelID << ", Chip: " << (*it)->Address.ChipID);
 							sourceQueue2->remove(it++);
-							if(sourceQueue2->Get_id().find("SLMerge") != std::string::npos){
-								break;
-							}
-							if(planeVectorCount == plane_no_per_die){
-								break;
-							}
 							continue;
 						}
 					}

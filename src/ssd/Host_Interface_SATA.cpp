@@ -359,8 +359,4 @@ namespace SSD_Components
 	{
 		return ncq_depth;
 	}
-
-	void Host_Interface_SATA::Clear_Stats()
-    {
-	}
 }

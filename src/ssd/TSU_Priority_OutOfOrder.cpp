@@ -73,9 +73,6 @@ TSU_Priority_OutOfOrder::TSU_Priority_OutOfOrder(const sim_object_id_type &id,
             MappingWriteTRQueue[channelID][chipId].Set_id("Mapping_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             GCWriteTRQueue[channelID][chipId].Set_id("GC_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             GCEraseTRQueue[channelID][chipId].Set_id("GC_Erase_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
-            SLMergeReadTRQueue[channelID][chipId].Set_id("SLMerge_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
-			SLMergeWriteTRQueue[channelID][chipId].Set_id("SLMerge_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
-			SLMergeEraseTRQueue[channelID][chipId].Set_id("SLMerge_Erase_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
         }
     }
 }
@@ -193,117 +190,7 @@ void TSU_Priority_OutOfOrder::Report_results_in_XML(std::string name_prefix, Uti
         }
     }
 
-    	for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-	{
-		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-		{
-			SLMergeReadTRQueue[channelID][chip_cntr].Report_results_in_XML(name_prefix + ".SLMerge_Read_TR_Queue", xmlwriter);
-		}
-	}
-
-	for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-	{
-		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-		{
-			SLMergeWriteTRQueue[channelID][chip_cntr].Report_results_in_XML(name_prefix + ".SLMerge_Write_TR_Queue", xmlwriter);
-		}
-	}
-
-	for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-	{
-		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-		{
-			SLMergeEraseTRQueue[channelID][chip_cntr].Report_results_in_XML(name_prefix + ".SLMerge_Erase_TR_Queue", xmlwriter);
-		}
-	}
-
     xmlwriter.Write_close_tag();
-}
-
-void TSU_Priority_OutOfOrder::Clear_Stats()
-{
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            for (unsigned int priorityClass = 0; priorityClass < IO_Flow_Priority_Class::NUMBER_OF_PRIORITY_LEVELS; priorityClass++)
-            {
-                UserReadTRQueue[channelID][chip_cntr][priorityClass].Clear_Stats();
-            }
-        }
-    }
-
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            for (unsigned int priorityClass = 0; priorityClass < IO_Flow_Priority_Class::NUMBER_OF_PRIORITY_LEVELS; priorityClass++)
-            {
-                UserWriteTRQueue[channelID][chip_cntr][priorityClass].Clear_Stats();
-            }
-        }
-    }
-
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            MappingReadTRQueue[channelID][chip_cntr].Clear_Stats();
-        }
-    }
-
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            MappingWriteTRQueue[channelID][chip_cntr].Clear_Stats();
-        }
-    }
-
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            GCReadTRQueue[channelID][chip_cntr].Clear_Stats();
-        }
-    }
-
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            GCWriteTRQueue[channelID][chip_cntr].Clear_Stats();
-        }
-    }
-
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-    {
-        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-        {
-            GCEraseTRQueue[channelID][chip_cntr].Clear_Stats();
-        }
-    }
-    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-	{
-		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-		{
-			SLMergeReadTRQueue[channelID][chip_cntr].Clear_Stats();
-		}
-	}
-	for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-	{
-		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-		{
-			SLMergeWriteTRQueue[channelID][chip_cntr].Clear_Stats();
-		}
-	}
-	for (unsigned int channelID = 0; channelID < channel_count; channelID++)
-	{
-		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-		{
-			SLMergeEraseTRQueue[channelID][chip_cntr].Clear_Stats();
-		}
-	}
 }
 
 void TSU_Priority_OutOfOrder::Schedule()
@@ -335,7 +222,6 @@ void TSU_Priority_OutOfOrder::Schedule()
             {
             case Transaction_Source_Type::CACHE:
             case Transaction_Source_Type::USERIO:
-            case Transaction_Source_Type::SECTORLOG_USER:
                 if ((*it)->Priority_class != IO_Flow_Priority_Class::UNDEFINED)
                 {
                     UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID][static_cast<int>((*it)->Priority_class)].push_back((*it));
@@ -351,9 +237,6 @@ void TSU_Priority_OutOfOrder::Schedule()
             case Transaction_Source_Type::GC_WL:
                 GCReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
                 break;
-            case Transaction_Source_Type::SECTORLOG_MERGE:
-				SLMergeReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
-				break;
             default:
                 PRINT_ERROR("TSU_PriorityOutOfOrder: unknown source type for a read transaction!")
             }
@@ -363,7 +246,6 @@ void TSU_Priority_OutOfOrder::Schedule()
             {
             case Transaction_Source_Type::CACHE:
             case Transaction_Source_Type::USERIO:
-            case Transaction_Source_Type::SECTORLOG_USER:
                 if ((*it)->Priority_class != IO_Flow_Priority_Class::UNDEFINED)
                 {
                     UserWriteTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID][static_cast<int>((*it)->Priority_class)].push_back((*it));
@@ -379,25 +261,12 @@ void TSU_Priority_OutOfOrder::Schedule()
             case Transaction_Source_Type::GC_WL:
                 GCWriteTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
                 break;
-            case Transaction_Source_Type::SECTORLOG_MERGE:
-				SLMergeWriteTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
-				break;
             default:
                 PRINT_ERROR("TSU_PriorityOutOfOrder: unknown source type for a write transaction!")
             }
             break;
         case Transaction_Type::ERASE:
-            switch ((*it)->Source)
-			{
-			case Transaction_Source_Type::GC_WL:
-				GCEraseTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
-				break;
-			case Transaction_Source_Type::SECTORLOG_MERGE:
-				SLMergeEraseTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
-				break;
-			default:
-				PRINT_ERROR("TSU_OutOfOrder: unknown source type for a write transaction!")
-			}
+            GCEraseTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
             break;
         default:
             break;
@@ -463,7 +332,6 @@ Flash_Transaction_Queue *TSU_Priority_OutOfOrder::get_next_read_service_queue(NV
     return NULL;
 }
 
-//TODO.
 bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip *chip)
 {
     Flash_Transaction_Queue *sourceQueue1 = NULL, *sourceQueue2 = NULL;
@@ -476,15 +344,9 @@ bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_C
         {
             sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
         }
-        else if (SLMergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-			sourceQueue2 = &SLMergeReadTRQueue[chip->ChannelID][chip->ChipID];
-		}
         else
         {
             sourceQueue2 = get_next_read_service_queue(chip);
-            if(sourceQueue2 == NULL){
-                sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            }
         }
     }
     else if (ftl->GC_and_WL_Unit->GC_is_in_urgent_mode(chip))
@@ -493,12 +355,7 @@ bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_C
         if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            if(SLMergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-			{
-				sourceQueue2 = &SLMergeReadTRQueue[chip->ChannelID][chip->ChipID];
-			} else{
-                sourceQueue2 = get_next_read_service_queue(chip);
-            }
+            sourceQueue2 = get_next_read_service_queue(chip);
         }
         else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
@@ -508,20 +365,6 @@ bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_C
         {
             return false;
         }
-        else if (SLMergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			sourceQueue1 = &SLMergeReadTRQueue[chip->ChannelID][chip->ChipID];
-            sourceQueue2 = get_next_read_service_queue(chip);
-
-		}
-        else if(SLMergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			return false;
-		}
-		else if(SLMergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			return false;
-		}
         else
         {
             sourceQueue1 = get_next_read_service_queue(chip);
@@ -534,26 +377,6 @@ bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_C
     else
     {
         //If GC is currently executed in the preemptive mode, then user IO transaction queues are checked first
-        if(SLMergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-			sourceQueue1 = &SLMergeReadTRQueue[chip->ChannelID][chip->ChipID];
-            sourceQueue2 = get_next_read_service_queue(chip);
-			if (sourceQueue2 == NULL)
-			{
-				sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-			} 
-		}
-        else if(SLMergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			return false;
-		}
-		else if(SLMergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			return false;
-		}
-        else{
-            sourceQueue1 = get_next_read_service_queue(chip);
-        }
-        
         sourceQueue1 = get_next_read_service_queue(chip);
         if (sourceQueue1 != NULL)
         {

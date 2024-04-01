@@ -26,11 +26,7 @@ namespace SSD_Components
 		MEMORY_READ_FOR_CACHE_EVICTION_FINISHED,
 		MEMORY_WRITE_FOR_CACHE_FINISHED,
 		MEMORY_READ_FOR_USERIO_FINISHED,
-		MEMORY_WRITE_FOR_USERIO_FINISHED,
-
-		MEMORY_READ_FOR_FLUSH_FINISHED,
-		MEMORY_WRITE_FOR_SECTORLOG_FINISHED,
-		MEMORY_READ_FOR_SECTORLOG_READ_FINISHED,
+		MEMORY_WRITE_FOR_USERIO_FINISHED
 	};
 
 	struct Memory_Transfer_Info
@@ -56,7 +52,7 @@ namespace SSD_Components
 		Data_Cache_Slot_Type Evict_one_slot_lru();
 		void Change_slot_status_to_writeback(const stream_id_type stream_id, const LPA_type lpn);
 		void Remove_slot(const stream_id_type stream_id, const LPA_type lpn);
-		void Insert_read_data(const stream_id_type stream_id, const LPA_type lpn, const data_cache_content_type content, const data_timestamp_type timestamp, const page_status_type state_bitmap_of_read_sectors, const Cache_Slot_Status status);
+		void Insert_read_data(const stream_id_type stream_id, const LPA_type lpn, const data_cache_content_type content, const data_timestamp_type timestamp, const page_status_type state_bitmap_of_read_sectors);
 		void Insert_write_data(const stream_id_type stream_id, const LPA_type lpn, const data_cache_content_type content, const data_timestamp_type timestamp, const page_status_type state_bitmap_of_write_sectors);
 		void Update_data(const stream_id_type stream_id, const LPA_type lpn, const data_cache_content_type content, const data_timestamp_type timestamp, const page_status_type state_bitmap_of_write_sectors);
 	private:

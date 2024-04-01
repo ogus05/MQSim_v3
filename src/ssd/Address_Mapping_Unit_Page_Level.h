@@ -167,10 +167,6 @@ namespace SSD_Components
 		void Remove_barrier_for_accessing_lpa(stream_id_type stream_id, LPA_type lpa);
 		void Remove_barrier_for_accessing_mvpn(stream_id_type stream_id, MVPN_type mpvn);
 		void Start_servicing_writes_for_overfull_plane(const NVM::FlashMemory::Physical_Page_Address plane_address);
-	
-		NVM::FlashMemory::Physical_Page_Address* allocate_block_for_sectorLog(const stream_id_type &stream_id);
-		void erase_block_from_sectorLog(NVM::FlashMemory::Physical_Page_Address &block_addr);
-
 	private:
 		static Address_Mapping_Unit_Page_Level* _my_instance;
 		unsigned int cmt_capacity;

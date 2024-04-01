@@ -36,7 +36,6 @@ private:
 	unsigned int total_requests_in_file;
 	std::vector<std::string> current_trace_line;
 	sim_time_type time_offset;
-	bool startRunning = false;
 };
 } // namespace Host_Components
 

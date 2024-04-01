@@ -99,7 +99,6 @@ namespace SSD_Components
 		}
 		Stream_id = NO_STREAM;
 		Holds_mapping_data = false;
-		Holds_sector_data = false;
 		Erase_transaction = NULL;
 	}
 

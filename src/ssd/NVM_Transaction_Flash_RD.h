@@ -8,7 +8,6 @@
 namespace SSD_Components
 {
 	class NVM_Transaction_Flash_WR;
-	class LSMSectorMapReadingInfo;
 	class NVM_Transaction_Flash_RD : public NVM_Transaction_Flash
 	{
 	public:
@@ -33,8 +32,6 @@ namespace SSD_Components
 		page_status_type read_sectors_bitmap;
 		data_timestamp_type DataTimeStamp;
 
-		LSMSectorMapReadingInfo* readingInfo;
-		bool writebackRequired;
 		NVM_Transaction_Flash_RD* originTr;
 	};
 }

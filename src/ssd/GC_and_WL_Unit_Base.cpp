@@ -42,30 +42,9 @@ namespace SSD_Components
 
 	void GC_and_WL_Unit_Base::handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction)
 	{
-		switch(transaction->Source){
-			case Transaction_Source_Type::SECTORLOG_MERGE:{
-				if(transaction->Type == Transaction_Type::READ && ((NVM_Transaction_Flash_RD*)transaction)->LPA == NO_LPA){
-					return;
-				} else if(transaction->Type == Transaction_Type::WRITE && ((NVM_Transaction_Flash_WR*)transaction)->LPA == NO_LPA){
-					return;
-				} else if(transaction->Type == Transaction_Type::ERASE){
-					return;
-				}
-			}
-			case Transaction_Source_Type::SECTORLOG_USER:{
-				if(transaction->LPA == NO_LPA){
-					return;
-				}
-				else{
-					break;
-				}
-			}
-		}
 		PlaneBookKeepingType* pbke = &(_my_instance->block_manager->plane_manager[transaction->Address.ChannelID][transaction->Address.ChipID][transaction->Address.DieID][transaction->Address.PlaneID]);
 
 		switch (transaction->Source) {
-			case Transaction_Source_Type::SECTORLOG_USER:
-			case Transaction_Source_Type::SECTORLOG_MERGE:
 			case Transaction_Source_Type::USERIO:
 			case Transaction_Source_Type::MAPPING:
 			case Transaction_Source_Type::CACHE:
@@ -257,8 +236,7 @@ namespace SSD_Components
 		for (unsigned int stream_id = 0; stream_id < address_mapping_unit->Get_no_of_input_streams(); stream_id++) {
 			if ((&plane_record->Blocks[gc_wl_candidate_block_id]) == plane_record->Data_wf[stream_id]
 				|| (&plane_record->Blocks[gc_wl_candidate_block_id]) == plane_record->Translation_wf[stream_id]
-				|| (&plane_record->Blocks[gc_wl_candidate_block_id]) == plane_record->GC_wf[stream_id]
-				|| plane_record->Blocks[gc_wl_candidate_block_id].Holds_sector_data) {
+				|| (&plane_record->Blocks[gc_wl_candidate_block_id]) == plane_record->GC_wf[stream_id]) {
 				return false;
 			}
 		}

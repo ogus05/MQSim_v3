@@ -5,7 +5,6 @@
 #include "NVM_Transaction_Flash_WR.h"
 #include "FTL.h"
 #include "Stats2.h"
-#include "LSMSectorLog.h"
 
 namespace SSD_Components
 {
@@ -47,9 +46,6 @@ namespace SSD_Components
 		Data_Cache_Manager_Base::Setup_triggers();
 		flash_controller->ConnectToTransactionServicedSignal(handle_transaction_serviced_signal_from_PHY);
 		static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->ConnectDCMServiedTransactionHandler(handle_transaction_serviced_signal_from_PHY);
-		for(auto e : (*sectorLog)){
-			e->connectDCMService(handle_transaction_serviced_signal_from_PHY);
-		}
 	}
 
 	void Data_Cache_Manager_Flash_Simple::Do_warmup(std::vector<Utils::Workload_Statistics*> workload_stats)
@@ -67,7 +63,7 @@ namespace SSD_Components
 			switch (caching_mode_per_input_stream[user_request->Stream_id])
 			{
 				case Caching_Mode::TURNED_OFF:
-					sendToAMU(user_request->Transaction_list);
+					static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list);
 					return;
 				case Caching_Mode::WRITE_CACHE:
 				{
@@ -114,7 +110,7 @@ namespace SSD_Components
 						service_dram_access_request(transfer_info);
 					}
 					if (user_request->Transaction_list.size() > 0) {
-						sendToAMU(user_request->Transaction_list);
+						static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list);
 					}
 					return;
 				}
@@ -125,7 +121,7 @@ namespace SSD_Components
 			switch (caching_mode_per_input_stream[user_request->Stream_id])
 			{
 				case Caching_Mode::TURNED_OFF:
-					sendToAMU(user_request->Transaction_list);
+					static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list);
 					return;
 				case Caching_Mode::WRITE_CACHE://The data cache manger unit performs like a destage buffer
 				{
@@ -217,7 +213,7 @@ namespace SSD_Components
 
 		//If any writeback should be performed, then issue flash write transactions
 		if (writeback_transactions.size() > 0) {
-			sendToAMU(writeback_transactions);
+			static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(writeback_transactions);
 		}
 
 		//Reset control data structures used for hot/cold separation 
@@ -229,11 +225,6 @@ namespace SSD_Components
 
 	void Data_Cache_Manager_Flash_Simple::handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction)
 	{
-		if(transaction->Source == Transaction_Source_Type::SECTORLOG_MERGE ||
-				transaction->Source == Transaction_Source_Type::SECTORLOG_USER){
-			_my_instance->sectorLog->at(transaction->Stream_id)->handle_transaction_serviced_signal_from_PHY(transaction);
-			return;
-		}
 		//First check if the transaction source is a user request or the cache itself
 		if (transaction->Source != Transaction_Source_Type::USERIO && transaction->Source != Transaction_Source_Type::CACHE) {
 			return;
@@ -330,15 +321,10 @@ namespace SSD_Components
 				}
 				break;
 			case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_CACHE_EVICTION_FINISHED://Reading data from DRAM and writing it back to the flash storage
-				sendToAMU(*((std::list<NVM_Transaction*>*)(transfer_info->Related_request)));
+				static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(*((std::list<NVM_Transaction*>*)(transfer_info->Related_request)));
 				delete (std::list<NVM_Transaction*>*)transfer_info->Related_request;
 				break;
 			case Data_Cache_Simulation_Event_Type::MEMORY_WRITE_FOR_CACHE_FINISHED://The recently read data from flash is written back to memory to support future user read requests
-				break;
-			case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_FLUSH_FINISHED:
-			case Data_Cache_Simulation_Event_Type::MEMORY_WRITE_FOR_SECTORLOG_FINISHED:
-			case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_READ_FINISHED:
-				sectorLog->at(transfer_info->Stream_id)->handleDRAMServiced(transfer_info);
 				break;
 		}
 

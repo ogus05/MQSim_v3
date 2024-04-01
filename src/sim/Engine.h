@@ -34,8 +34,6 @@ namespace MQSimEngine {
 		void Stop_simulation();
 		bool Has_started();
 		bool Is_integrated_execution_mode();
-		
-		sim_time_type running_milestone = 0;
 	private:
 		sim_time_type _sim_time;
 		EventTree* _EventList;

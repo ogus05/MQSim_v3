@@ -13,12 +13,7 @@ namespace SSD_Components
 		this->id = id;
 	}
 
-    std::string Flash_Transaction_Queue::Get_id()
-    {
-        return this->id;
-    }
-
-    void Flash_Transaction_Queue::push_back(NVM_Transaction_Flash* const& transaction)
+	void Flash_Transaction_Queue::push_back(NVM_Transaction_Flash* const& transaction)
 	{
 		RequestQueueProbe.EnqueueRequest(transaction);
 		return list<NVM_Transaction_Flash*>::push_back(transaction);
@@ -93,8 +88,4 @@ namespace SSD_Components
 
 		xmlwriter.Write_end_element_tag();
 	}
-	void Flash_Transaction_Queue::Clear_Stats()
-    {
-		RequestQueueProbe.Clear_Stats();
-    }
 }

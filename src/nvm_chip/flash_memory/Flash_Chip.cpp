@@ -93,14 +93,6 @@ namespace NVM
 			}
 		}
 
-        void Flash_Chip::Clear_Stats()
-        {
-			STAT_totalExecTime = 0;
-			STAT_totalXferTime = 0;
-			STAT_totalOverlappedXferExecTime = 0;
-
-        }
-
 		LPA_type Flash_Chip::Get_metadata(flash_die_ID_type die_id, flash_plane_ID_type plane_id, flash_block_ID_type block_id, flash_page_ID_type page_id)//A simplification to decrease the complexity of GC execution! The GC unit may need to know the metadata of a page to decide if a page is valid or invalid. 
 		{
 			return Dies[die_id]->Planes[plane_id]->Blocks[block_id]->Pages[page_id].Metadata.LPA;
@@ -283,19 +275,19 @@ namespace NVM
 			xmlwriter.Write_attribute_string_inline(attr, val);
 
 			attr = "Fraction_of_Time_in_Execution";
-			val = std::to_string(STAT_totalExecTime / (double(Simulator->Time() - Simulator->running_milestone)));
+			val = std::to_string(STAT_totalExecTime / double(Simulator->Time()));
 			xmlwriter.Write_attribute_string_inline(attr, val);
 
 			attr = "Fraction_of_Time_in_DataXfer";
-			val = std::to_string(STAT_totalXferTime / (double(Simulator->Time() - Simulator->running_milestone)));
+			val = std::to_string(STAT_totalXferTime / double(Simulator->Time()));
 			xmlwriter.Write_attribute_string_inline(attr, val);
 
 			attr = "Fraction_of_Time_in_DataXfer_and_Execution";
-			val = std::to_string(STAT_totalOverlappedXferExecTime / (double(Simulator->Time() - Simulator->running_milestone)));
+			val = std::to_string(STAT_totalOverlappedXferExecTime / double(Simulator->Time()));
 			xmlwriter.Write_attribute_string_inline(attr, val);
 
 			attr = "Fraction_of_Time_Idle";
-			val = std::to_string(((double(Simulator->Time() - Simulator->running_milestone)) - STAT_totalOverlappedXferExecTime - STAT_totalXferTime - STAT_totalExecTime) / (double(Simulator->Time() - Simulator->running_milestone)));
+			val = std::to_string((Simulator->Time() - STAT_totalOverlappedXferExecTime - STAT_totalXferTime) / double(Simulator->Time()));
 			xmlwriter.Write_attribute_string_inline(attr, val);
 		
 			xmlwriter.Write_end_element_tag();

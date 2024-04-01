@@ -99,7 +99,7 @@ namespace SSD_Components
 	}
 
 	void Data_Cache_Flash::Insert_read_data(const stream_id_type stream_id, const LPA_type lpn, const data_cache_content_type content,
-		const data_timestamp_type timestamp, const page_status_type state_bitmap_of_read_sectors, const Cache_Slot_Status status)
+		const data_timestamp_type timestamp, const page_status_type state_bitmap_of_read_sectors)
 	{
 		LPA_type key = LPN_TO_UNIQUE_KEY(stream_id, lpn);
 		
@@ -115,7 +115,7 @@ namespace SSD_Components
 		cache_slot->State_bitmap_of_existing_sectors = state_bitmap_of_read_sectors;
 		cache_slot->Content = content;
 		cache_slot->Timestamp = timestamp;
-		cache_slot->Status = status;
+		cache_slot->Status = Cache_Slot_Status::CLEAN;
 		lru_list.push_front(std::pair<LPA_type, Data_Cache_Slot_Type*>(key, cache_slot));
 		cache_slot->lru_list_ptr = lru_list.begin();
 		slots[key] = cache_slot;

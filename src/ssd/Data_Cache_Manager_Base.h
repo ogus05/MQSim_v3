@@ -8,7 +8,6 @@
 #include "NVM_Firmware.h"
 #include "NVM_PHY_ONFI.h"
 #include "../utils/Workload_Statistics.h"
-#include "Data_Cache_Flash.h"
 
 namespace SSD_Components
 {
@@ -19,10 +18,6 @@ namespace SSD_Components
 	//How the cache space is shared among the concurrently running I/O flows/streams
 	enum class Cache_Sharing_Mode { SHARED,//each application has access to the entire cache space
 		EQUAL_PARTITIONING}; 
-
-	class LSMSectorLog;
-	class Memory_Transfer_Info;
-
 	class Data_Cache_Manager_Base: public MQSimEngine::Sim_Object
 	{
 		friend class Data_Cache_Manager_Flash_Advanced;
@@ -42,11 +37,6 @@ namespace SSD_Components
 		void Connect_to_user_memory_transaction_serviced_signal(MemoryTransactionServicedSignalHanderType);
 		void Set_host_interface(Host_Interface_Base* host_interface);
 		virtual void Do_warmup(std::vector<Utils::Workload_Statistics*> workload_stats) = 0;
-		
-		void connectSectorLog(std::vector<LSMSectorLog*>* sectorLog);
-		void sendToAMU(std::list<SSD_Components::NVM_Transaction *> transactionList);
-
-		virtual void service_dram_access_request(Memory_Transfer_Info* info) = 0;
 	protected:
 		static Data_Cache_Manager_Base* _my_instance;
 		Host_Interface_Base* host_interface;
@@ -59,8 +49,6 @@ namespace SSD_Components
 		Cache_Sharing_Mode sharing_mode;
 		static Caching_Mode* caching_mode_per_input_stream;
 		unsigned int stream_count;
-
-		std::vector<LSMSectorLog*>* sectorLog;
 
 		std::vector<UserRequestServicedSignalHanderType> connected_user_request_serviced_signal_handlers;
 		void broadcast_user_request_serviced_signal(User_Request* user_request);
