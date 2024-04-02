@@ -468,3 +468,20 @@ page_status_type SSD_Device::Find_NVM_subunit_access_bitmap(LHA_type lha)
 {
 	return my_instance->Firmware->Find_NVM_subunit_access_bitmap(lha);
 }
+
+void SSD_Device::Clear_Stats()
+{
+	(this->Host_interface)->Clear_Stats();
+	if(Memory_Type == NVM::NVM_Type::FLASH){
+		((SSD_Components::FTL *)this->Firmware)->Clear_Stats();
+		((SSD_Components::FTL *)this->Firmware)->TSU->Clear_Stats();
+
+		for (unsigned int channel_cntr = 0; channel_cntr < Channel_count; channel_cntr++)
+		{
+			for (unsigned int chip_cntr = 0; chip_cntr < Chip_no_per_channel; chip_cntr++)
+			{
+				((SSD_Components::ONFI_Channel_NVDDR2 *)Channels[channel_cntr])->Chips[chip_cntr]->Clear_Stats();
+			}
+		}
+	}
+}

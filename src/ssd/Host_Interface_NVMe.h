@@ -96,7 +96,6 @@ public:
 	uint16_t Get_submission_queue_depth();
 	uint16_t Get_completion_queue_depth();
 	void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter &xmlwriter);
-
 private:
 	uint16_t submission_queue_depth, completion_queue_depth;
 	unsigned int no_of_input_streams;
