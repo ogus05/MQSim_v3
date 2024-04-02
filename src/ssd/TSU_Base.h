@@ -31,6 +31,8 @@ public:
 	virtual ~TSU_Base();
 	void Setup_triggers();
 
+	virtual void Clear_Stats() = 0;
+	
 	/*When an MQSim needs to send a set of transactions for execution, the following 
 		* three funcitons should be invoked in this order:
 		* Prepare_for_transaction_submit()
