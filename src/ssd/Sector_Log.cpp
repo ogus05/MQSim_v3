@@ -433,7 +433,10 @@ void Sector_Map::Remove(const LPA_type &lpa)
 
     void Sector_Log::handleInputTransaction(std::list<NVM_Transaction *> transaction_list)
     {
-        if (transaction_list.front()->Type == SSD_Components::Transaction_Type::WRITE)
+        if(maxBlockSize == 0){
+            amu->Translate_lpa_to_ppa_and_dispatch(transaction_list);
+        }
+        else if (transaction_list.front()->Type == SSD_Components::Transaction_Type::WRITE)
         {
             std::list<NVM_Transaction*> fullPageWriteList;
 
@@ -601,6 +604,9 @@ void Sector_Map::Remove(const LPA_type &lpa)
     }
     void Sector_Log::servicedFromDRAMTrHandler(Memory_Transfer_Info *info)
     {
+        if(maxBlockSize == 0){
+            PRINT_ERROR("ERROR IN SECTOR LOG : SERVICE DRAM")
+        }
         switch(info->next_event_type){
         case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_FLUSH_FINISHED:{
             flushPageBuffer();
