@@ -1,6 +1,8 @@
 #include "Sector_Log.h"
 #include "Address_Mapping_Unit_Page_Level.h"
 #include "Data_Cache_Flash.h"
+#include "Page_Buffer.h"
+#include "Sector_Map.h"
 
 namespace SSD_Components
 {
@@ -9,169 +11,7 @@ namespace SSD_Components
         return (addr1->ChannelID == addr2->ChannelID && addr1->ChipID == addr2->ChipID && addr1->DieID == addr2->DieID &&
                     addr1->PlaneID == addr2->PlaneID && addr1->BlockID == addr2->BlockID);
     }
-
-    // return the LPA's sectors that stored in the Page Buffer as a bitmap.
-    uint64_t Page_Buffer::Exists(const LPA_type& lpa)
-    {
-        auto itr = entry.find(lpa);
-        if (itr == entry.end())
-            return 0;
-        else
-        {
-            return itr->second->sectorsBitmap;
-        }
-    }
-
-    void Page_Buffer::Insert(const LPA_type& lpa, const page_status_type& sectorsBitmap, page_status_type& remainSectorsBitmap)
-    {
-        page_status_type sectorsToInsert = 0;
-        page_status_type sectorsToRemain = sectorsBitmap;
-
-        if(remainBufferSizeInSectors == 0){
-            remainSectorsBitmap = sectorsToRemain;
-            return;
-        } else if(remainBufferSizeInSectors < 0){
-            PRINT_ERROR("PAGE BUFFER INSERT - REMAIN BUFFER SIZE IS LOWER THAN 0")
-        }
-        
-        if(entry.find(lpa) != entry.end()){
-            sectorsToRemain = (sectorsToRemain & ~(entry.at(lpa)->sectorsBitmap));
-        }
-
-        if(remainBufferSizeInSectors >= count_sector_no_from_status_bitmap(sectorsToRemain)){
-            sectorsToInsert = sectorsToRemain;
-            remainBufferSizeInSectors -= count_sector_no_from_status_bitmap(sectorsToInsert);
-            sectorsToRemain = 0;
-        } else{
-            page_status_type flag = 1;
-
-            while (count_sector_no_from_status_bitmap(sectorsToInsert) != remainBufferSizeInSectors)
-            {
-                while (sectorsToInsert == (flag & sectorsToRemain))
-                {
-                    flag = (uint64_t)1 | (flag << (uint64_t)1);
-                }
-                sectorsToInsert = (sectorsToRemain & flag);
-            }
-
-            remainBufferSizeInSectors -= count_sector_no_from_status_bitmap(sectorsToInsert);
-            if(remainBufferSizeInSectors != 0){
-                PRINT_ERROR("PAGE BUFFER INSERT - REMAIN BUFFER SIZE IS NOT 0")
-            }
-            sectorsToRemain = (sectorsToRemain & ~(sectorsToInsert));
-        }
-
-        if(sectorsToInsert != 0){
-            if(entry.find(lpa) != entry.end()){
-                entry.at(lpa)->sectorsBitmap |= sectorsToInsert;
-            } else{
-                entry.insert({lpa, new Page_Buffer_Entry(sectorsToInsert)});
-            }
-        }
-        remainSectorsBitmap = sectorsToRemain;
-    }
-
-    void Page_Buffer::Remove(const LPA_type &lpa, const page_status_type &sectorsToRemoveBitmap)
-    {
-        auto entryToRemove = entry.find(lpa);
-        if(entryToRemove == entry.end()){
-            return;
-        } else{
-            remainBufferSizeInSectors += count_sector_no_from_status_bitmap(entryToRemove->second->sectorsBitmap & sectorsToRemoveBitmap);
-            entryToRemove->second->sectorsBitmap = (entryToRemove->second->sectorsBitmap & ~(sectorsToRemoveBitmap));
-            if(entryToRemove->second->sectorsBitmap == 0){
-                delete entryToRemove->second;
-                entry.erase(entryToRemove);
-            }
-        }
-    }
-
-    Page_Buffer::~Page_Buffer()
-    {
-        for(auto& e : entry){
-            delete e.second;
-        }
-    }
-
-    void Page_Buffer::RemoveAll()
-    {
-        for(auto& target : entry){
-            remainBufferSizeInSectors += count_sector_no_from_status_bitmap(target.second->sectorsBitmap);
-            delete target.second;
-        }
-        if(remainBufferSizeInSectors != sectorLog->sectorsPerPage){
-            PRINT_ERROR("PAGE BUFFER REMOVE ALL - REMAIN BUFFER SIZE IS NOT 0")
-        }
-        entry.clear();
-    }
-
-    const std::unordered_map<LPA_type, Page_Buffer_Entry*> Page_Buffer::GetAll()
-    {
-        return entry;
-    }
-
-    std::vector<Sector_Map_Entry>* Sector_Map::getAllRelatedPPAsInLPA(const LPA_type& lpa)
-    {
-        if(entry.find(lpa) == entry.end()){
-            return NULL;
-        } else{
-            return entry.at(lpa);
-        }
-    }
-
-    void Sector_Map::Insert(const LPA_type &lpa, const uint32_t &sector, const PPA_type &ppa, Sector_Log_WF_Entry* WFEntry)
-    {
-        auto itr = entry.find(lpa);
-        if(itr == entry.end()){
-            auto insertedEntry = entry.insert({lpa, new std::vector<Sector_Map_Entry>()}).first->second;
-            insertedEntry->resize(sectorLog->sectorsPerPage, Sector_Map_Entry());
-            insertedEntry->at(sector).ppa = ppa;
-            insertedEntry->at(sector).storedBlock = WFEntry;
-            if(WFEntry->storeSectors.find(lpa) != WFEntry->storeSectors.end()){
-                PRINT_ERROR("SECTOR MAP INSERT")
-            }
-            WFEntry->storeSectors.insert({lpa, 1});
-        } else{
-            if(itr->second->at(sector).ppa != NO_PPA){
-                std::unordered_map<LPA_type, uint32_t>& removeBlock = itr->second->at(sector).storedBlock->storeSectors;
-                removeBlock.at(lpa)--;
-                if(removeBlock.at(lpa) == 0){
-                    removeBlock.erase(lpa);
-                }
-            }
-            itr->second->at(sector).ppa = ppa;
-            itr->second->at(sector).storedBlock = WFEntry;
-            if(WFEntry->storeSectors.find(lpa) != WFEntry->storeSectors.end()){
-                WFEntry->storeSectors.at(lpa)++;
-            } else{
-                WFEntry->storeSectors.insert({lpa, 1});
-            }
-        }
-    }
-
-    Sector_Map::~Sector_Map()
-    {
-        for(auto& e : entry){
-            delete e.second;
-        }
-    }
-
-void Sector_Map::Remove(const LPA_type &lpa)
-    {
-        auto itr = entry.find(lpa);
-
-        if(itr != entry.end()){
-            for(auto& entry: *itr->second){
-                if(entry.storedBlock != NULL && (entry.storedBlock->storeSectors.find(lpa) != entry.storedBlock->storeSectors.end())){
-                    entry.storedBlock->storeSectors.erase(lpa);
-                }
-            }
-            delete itr->second;
-            entry.erase(itr);
-        }
-    }
-
-
+    
     Sector_Log* Sector_Log::instance = NULL;
     Sector_Log::Sector_Log(const stream_id_type& in_streamID, const uint32_t& in_sectorsPerPage, const uint32_t& in_pagesPerBlock, const uint32_t& in_maxBlockSize,
     Address_Mapping_Unit_Page_Level *in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm){
@@ -602,6 +442,7 @@ void Sector_Map::Remove(const LPA_type &lpa)
             
         }
     }
+    
     void Sector_Log::servicedFromDRAMTrHandler(Memory_Transfer_Info *info)
     {
         if(maxBlockSize == 0){
@@ -628,6 +469,7 @@ void Sector_Map::Remove(const LPA_type &lpa)
         } break;
         }
     }
+    
     void Sector_Log::handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash *transaction)
     {
         
@@ -713,12 +555,7 @@ void Sector_Map::Remove(const LPA_type &lpa)
             }
         }
     }
-    Sector_Map_Entry::Sector_Map_Entry()
-    {
-        ppa = NO_PPA;
-        storedBlock = NULL;
-    }
-
+    
     Sector_Log_WF_Entry::Sector_Log_WF_Entry(NVM::FlashMemory::Physical_Page_Address *in_blockAddr, PlaneBookKeepingType *in_planeRecord, Block_Pool_Slot_Type *in_blockRecord)
     :blockAddr(in_blockAddr), planeRecord(in_planeRecord), blockRecord(in_blockRecord) {
         prepareMerge = false;
