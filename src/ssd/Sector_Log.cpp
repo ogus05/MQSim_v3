@@ -370,10 +370,11 @@ namespace SSD_Components
                 std::vector<Sector_Map_Entry>* relatedPPA = sectorMap->getAllRelatedPPAsInLPA(tr->LPA);
                 if(relatedPPA != NULL){
                     for(uint32_t sectorLocation = 0; sectorLocation < relatedPPA->size(); sectorLocation++){
-                        //Look up all of the sectors should be handled by the Sector Log. 
+                        //Looking up all sectors should be handled by the Sector Log. 
                         if((((uint64_t)1 << sectorLocation) & sectorsToRead) > 0){
                             PPA_type PPAForCurSector = relatedPPA->at(sectorLocation).ppa;
                             if(PPAForCurSector != NO_PPA){
+                                Stats2::storeSectorData(tr->LPA, PPAForCurSector, relatedPPA->at(sectorLocation).writtenTime);
                                 if(PPAForReadTransaction.find(PPAForCurSector) == PPAForReadTransaction.end()){
                                     PPAForReadTransaction.insert({PPAForCurSector, ((uint64_t)1 << sectorLocation)});
                                 } else{
@@ -385,6 +386,8 @@ namespace SSD_Components
                         }
                     }
                 }
+                
+                Stats2::handleSector();
 
                 userTrBuffer.at(tr) += PPAForReadTransaction.size();
                 for(auto& PPA : PPAForReadTransaction){
@@ -398,7 +401,6 @@ namespace SSD_Components
                         NVM_Transaction_Flash_RD* readSectorArea = new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_USER, streamID,
                         count_sector_no_from_status_bitmap(PPA.second) * SECTOR_SIZE_IN_BYTE, NO_LPA, PPA.first, NULL, tr->Priority_class, 0, PPA.second, CurrentTimeStamp);
                         readSectorArea->originTr = tr;
-                        Stats2::handleSector(tr->LPA);
                         readSectorArea->Address = amu->Convert_ppa_to_address(readSectorArea->PPA);
                         transactionListForTransferTSU.push_back(readSectorArea);
                     }

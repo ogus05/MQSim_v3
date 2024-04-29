@@ -7,6 +7,7 @@ namespace SSD_Components{
     public:
         PPA_type ppa;
         Sector_Log_WF_Entry* storedBlock;
+        sim_time_type writtenTime;
 
         Sector_Map_Entry();
     };

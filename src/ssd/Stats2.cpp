@@ -13,6 +13,7 @@ FILE* Stats2::OFS_SECTOR = nullptr;
 int Stats2::printStats2 = 0;
 
 std::vector<uint64_t> Stats2::mappingRelatedToGC = std::vector<uint64_t>();
+std::unordered_map<PPA_type, SectorData> Stats2::sectorDataList = std::unordered_map<PPA_type, SectorData>();
 
 void Stats2::Init_Stats2(std::string ssd_config_file_path, std::string workload_defs_file_path)
 {
@@ -146,10 +147,24 @@ void Stats2::handleReadAndModify(uint32_t readSectorsRAM)
     }
 }
 
-void Stats2::handleSector(LPA_type lpa)
+void Stats2::storeSectorData(LPA_type lpa, PPA_type ppa, sim_time_type writtenTime)
 {
-    static uint64_t reqSequnce = 0;
     if(!Simulator->loadPhase && OFS_SECTOR){
-        fprintf(OFS_SECTOR, "%llu %llu %llu\n", (unsigned long long)lpa, (unsigned long long)CurrentTimeStamp, (unsigned long long)reqSequnce++);
+        auto curSectorData = sectorDataList.find(ppa);
+        if(curSectorData == sectorDataList.end()){
+            curSectorData = sectorDataList.insert({ppa, SectorData(lpa, writtenTime)}).first;
+        }
+        curSectorData->second.sectorsCount += 1;
+    }
+}
+
+void Stats2::handleSector()
+{
+    if(!Simulator->loadPhase && OFS_SECTOR){
+        for(auto sectorData : sectorDataList){
+            fprintf(OFS_SECTOR, "%llu %llu %llu %u\n", (unsigned long long)sectorData.second.lpa, (unsigned long long)sectorData.second.writtenTime, (unsigned long long)CurrentTimeStamp, 
+                sectorData.second.sectorsCount);
+        }
+        sectorDataList.clear();
     }
 }

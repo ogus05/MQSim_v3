@@ -20,6 +20,7 @@ namespace SSD_Components{
             insertedEntry->resize(sectorLog->sectorsPerPage, Sector_Map_Entry());
             insertedEntry->at(sector).ppa = ppa;
             insertedEntry->at(sector).storedBlock = WFEntry;
+            insertedEntry->at(sector).writtenTime = CurrentTimeStamp;
             if(WFEntry->storeSectors.find(lpa) != WFEntry->storeSectors.end()){
                 PRINT_ERROR("SECTOR MAP INSERT")
             }
@@ -34,6 +35,7 @@ namespace SSD_Components{
             }
             itr->second->at(sector).ppa = ppa;
             itr->second->at(sector).storedBlock = WFEntry;
+            itr->second->at(sector).writtenTime = CurrentTimeStamp;
             if(WFEntry->storeSectors.find(lpa) != WFEntry->storeSectors.end()){
                 WFEntry->storeSectors.at(lpa)++;
             } else{
@@ -69,6 +71,7 @@ void Sector_Map::Remove(const LPA_type &lpa)
     {
         ppa = NO_PPA;
         storedBlock = NULL;
+        writtenTime = 0;
     }
 
 }
