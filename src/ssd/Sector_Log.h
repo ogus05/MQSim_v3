@@ -48,7 +48,6 @@ namespace SSD_Components{
         TSU_Base* tsu;
         Data_Cache_Manager_Base* dcm;
 
-
         uint32_t maxBlockSize;
         uint32_t sectorsPerPage;
         uint32_t pagesPerBlock;

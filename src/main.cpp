@@ -331,7 +331,7 @@ int main(int argc, char* argv[])
 	delete exec_params;
     cout << "Simulation complete; Press any key to exit." << endl;
 
-	cin.get(); // Disable if you prefer batch runs
+	// cin.get(); // Disable if you prefer batch runs
 
 	return 0;
 }

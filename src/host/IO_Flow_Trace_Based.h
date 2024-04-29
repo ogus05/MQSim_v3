@@ -31,7 +31,6 @@ private:
 	Trace_Time_Unit time_unit;
 	unsigned int percentage_to_be_simulated;
 
-	bool loadPhase = false;
 	bool loadPhaseExists = false;
 	std::string load_trace_file_path;
 	std::ifstream load_trace_file;

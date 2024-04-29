@@ -41,6 +41,7 @@ namespace MQSimEngine {
 		void Finish_LoadPhase(sim_time_type time, Sim_Object* io_flow);
 
 		sim_time_type loadMileStone;
+		bool loadPhase = false;
 	private:
 		sim_time_type _sim_time;
 		EventTree* _EventList;

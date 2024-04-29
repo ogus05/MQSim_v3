@@ -3,6 +3,7 @@
 #include "Data_Cache_Flash.h"
 #include "Page_Buffer.h"
 #include "Sector_Map.h"
+#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -20,7 +21,6 @@ namespace SSD_Components
         sectorsPerPage = in_sectorsPerPage;
         pagesPerBlock = in_pagesPerBlock;
         streamID = in_streamID;
-
         amu = in_amu;
         tsu = in_tsu;
         dcm = in_dcm;
@@ -398,11 +398,12 @@ namespace SSD_Components
                         NVM_Transaction_Flash_RD* readSectorArea = new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_USER, streamID,
                         count_sector_no_from_status_bitmap(PPA.second) * SECTOR_SIZE_IN_BYTE, NO_LPA, PPA.first, NULL, tr->Priority_class, 0, PPA.second, CurrentTimeStamp);
                         readSectorArea->originTr = tr;
+                        Stats2::handleSector(tr->LPA);
                         readSectorArea->Address = amu->Convert_ppa_to_address(readSectorArea->PPA);
                         transactionListForTransferTSU.push_back(readSectorArea);
                     }
-                    
                 }
+                
                 //If the Sector Area doesn't store all of the sectors, a read transaction read the data area is tranferred to AMU.
                 if(sectorsToRead > 0){     
                     NVM_Transaction_Flash_RD* readDataArea = new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_USER, streamID,

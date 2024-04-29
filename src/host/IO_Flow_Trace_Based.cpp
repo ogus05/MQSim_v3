@@ -85,11 +85,11 @@ void IO_Flow_Trace_Based::Start_simulation()
 	load_trace_file.open(load_trace_file_path, std::ios::in);
 	if(!load_trace_file.is_open()){
 		loadPhaseExists = false;
-		loadPhase = false;
+		Simulator->loadPhase = false;
 		PRINT_MESSAGE("Load Phase Undetected....")
 	} else{
 		loadPhaseExists = true;
-		loadPhase = true;
+		Simulator->loadPhase = true;
 		PRINT_MESSAGE("Load Phase Detected....")
 		sim_time_type last_request_arrival_time_1 = 0;
 		while (std::getline(load_trace_file, trace_line))
@@ -153,7 +153,7 @@ void IO_Flow_Trace_Based::Start_simulation()
 	}
 
 	std::ifstream* curTraceFile;
-	if(loadPhase){
+	if(Simulator->loadPhase){
 		load_trace_file.open(load_trace_file_path);
 		current_trace_line.clear();
 		std::getline(load_trace_file, trace_line);
@@ -183,7 +183,7 @@ void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event *)
 	if (STAT_generated_request_count < total_requests_to_be_generated)
 	{
 		std::ifstream* curTraceFile;
-		if(loadPhase){
+		if(Simulator->loadPhase){
 			curTraceFile = &load_trace_file;
 		} else{
 			curTraceFile = &trace_file;
@@ -198,8 +198,8 @@ void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event *)
 		}
 		else
 		{
-			if(loadPhase){
-				loadPhase = false;
+			if(Simulator->loadPhase){
+				Simulator->loadPhase = false;
 				curTraceFile->close();
 				trace_file.open(trace_file_path);
 				curTraceFile = &trace_file;

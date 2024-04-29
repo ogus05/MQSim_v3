@@ -1,9 +1,11 @@
 
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include "FlashTypes.h"
 
 
 class Stats2
@@ -15,11 +17,12 @@ private:
     static FILE* OFS_GC;
     static FILE* OFS_READANDMODIFY;
     static FILE* OFS_CLEANING;
+    static FILE* OFS_SECTOR;
 
     static std::vector<uint64_t> mappingRelatedToGC;
 
     static std::vector<uint64_t> holdsMappingDataGC;
-    static bool printStats2;
+    static int printStats2;
 
 public:
     static void Init_Stats2(std::string ssd_config_file_path, std::string workload_defs_file_path);
@@ -31,4 +34,5 @@ public:
     static void handleMappingRelatedToGC(uint64_t ppn);
     static void handleGarbageCollection(uint64_t GCLatency, bool holdsMappingData);
     static void handleReadAndModify(uint32_t readSectorsRAM);
+    static void handleSector(LPA_type lpa);
 };
