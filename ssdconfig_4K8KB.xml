@@ -44,39 +44,39 @@
 		<Static_Wearleveling_Enabled>false</Static_Wearleveling_Enabled>
 		<Static_Wearleveling_Threshold>100</Static_Wearleveling_Threshold>
 		
-		<Preferred_suspend_erase_time_for_read>1100000</Preferred_suspend_erase_time_for_read>
-		<Preferred_suspend_erase_time_for_write>1100000</Preferred_suspend_erase_time_for_write>
-		<Preferred_suspend_write_time_for_read>200000</Preferred_suspend_write_time_for_read>
-		<Flash_Channel_Count>2</Flash_Channel_Count>
+		<Preferred_suspend_erase_time_for_read>2200000</Preferred_suspend_erase_time_for_read>
+		<Preferred_suspend_erase_time_for_write>2200000</Preferred_suspend_erase_time_for_write>
+		<Preferred_suspend_write_time_for_read>400000</Preferred_suspend_write_time_for_read>
+		<Flash_Channel_Count>4</Flash_Channel_Count>
 		<Flash_Channel_Width>1</Flash_Channel_Width>
 		<Channel_Transfer_Rate>333</Channel_Transfer_Rate>
 		<Chip_No_Per_Channel>2</Chip_No_Per_Channel>
 		<Flash_Comm_Protocol>NVDDR2</Flash_Comm_Protocol>
 
-		<SL_Max_Block_Count>1024</SL_Max_Block_Count>
+		<SL_Max_Block_Count>4096</SL_Max_Block_Count>
 		
 		<Flash_Parameter_Set>
 			<Flash_Technology>MLC</Flash_Technology>
 			<CMD_Suspension_Support>ERASE</CMD_Suspension_Support>
 
-			<Page_Read_Latency_LSB>130000</Page_Read_Latency_LSB>
-			<Page_Read_Latency_CSB>130000</Page_Read_Latency_CSB>
-			<Page_Read_Latency_MSB>130000</Page_Read_Latency_MSB>
-			<Page_Program_Latency_LSB>1300000</Page_Program_Latency_LSB>
-			<Page_Program_Latency_CSB>1300000</Page_Program_Latency_CSB>
-			<Page_Program_Latency_MSB>1300000</Page_Program_Latency_MSB>
-			<Block_Erase_Latency>5200000</Block_Erase_Latency>
+			<Page_Read_Latency_LSB>275000</Page_Read_Latency_LSB>
+			<Page_Read_Latency_CSB>275000</Page_Read_Latency_CSB>
+			<Page_Read_Latency_MSB>275000</Page_Read_Latency_MSB>
+			<Page_Program_Latency_LSB>2750000</Page_Program_Latency_LSB>
+			<Page_Program_Latency_CSB>2750000</Page_Program_Latency_CSB>
+			<Page_Program_Latency_MSB>2750000</Page_Program_Latency_MSB>
+			<Block_Erase_Latency>11000000</Block_Erase_Latency>
 			
-			<Block_PE_Cycles_Limit>10000</Block_PE_Cycles_Limit>
+			<Block_PE_Cycles_Limit>100000</Block_PE_Cycles_Limit>
 
-			<Suspend_Erase_Time>1100000</Suspend_Erase_Time>
-			<Suspend_Program_Time>200000</Suspend_Program_Time>
+			<Suspend_Erase_Time>2200000</Suspend_Erase_Time>
+			<Suspend_Program_Time>400000</Suspend_Program_Time>
 			
 			<Die_No_Per_Chip>2</Die_No_Per_Chip>
 			<Plane_No_Per_Die>2</Plane_No_Per_Die>
 			<Block_No_Per_Plane>1024</Block_No_Per_Plane>
-			<Page_No_Per_Block>1024</Page_No_Per_Block>
-			<Page_Capacity>4096</Page_Capacity>
+			<Page_No_Per_Block>512</Page_No_Per_Block>
+			<Page_Capacity>8192</Page_Capacity>
 			<Page_Metadat_Capacity>448</Page_Metadat_Capacity>
 		</Flash_Parameter_Set>
 	</Device_Parameter_Set>
