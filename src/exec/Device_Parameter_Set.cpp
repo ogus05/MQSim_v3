@@ -44,6 +44,7 @@ SSD_Components::ONFI_Protocol Device_Parameter_Set::Flash_Comm_Protocol = SSD_Co
 Flash_Parameter_Set Device_Parameter_Set::Flash_Parameters;
 
 unsigned int Device_Parameter_Set::SL_Max_Block_Count = 256;
+sim_time_type Device_Parameter_Set::BF_Milestone = sim_time_type(1e8);
 
 void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 {
@@ -375,6 +376,10 @@ void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 	val = std::to_string(SL_Max_Block_Count);
 	xmlwriter.Write_attribute_string(attr, val);
 
+	attr = "BF_Milestone";
+	val = std::to_string(BF_Milestone);
+	xmlwriter.Write_attribute_string(attr, val);
+
 
 	Flash_Parameters.XML_serialize(xmlwriter);
 
@@ -635,8 +640,10 @@ void Device_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
 			} else if(strcmp(param->name(), "SL_Max_Block_Count") == 0){
 				std::string val = param->value();
 				SL_Max_Block_Count = std::stoul(val);
-			} else if (strcmp(param->name(), "Flash_Parameter_Set") == 0)
-			{
+			} else if(strcmp(param->name(), "BF_Milestone") == 0){
+				std::string val = param->value();
+				BF_Milestone = std::stoull(val);
+			} else if (strcmp(param->name(), "Flash_Parameter_Set") == 0){
 				Flash_Parameters.XML_deserialize(param);
 			}
 		}

@@ -95,6 +95,9 @@ namespace MQSimEngine
 			while (ev != NULL) {
 				if(!ev->Ignore) {
 					ev->Target_sim_object->Execute_simulator_event(ev);
+					if(!loadPhase && !waitingLoadPhaseFinish){
+						logBF->logging(CurrentTimeStamp);
+					}
 				}
 				Sim_Event* consumed_event = ev;
 				ev = ev->Next_event;
@@ -152,6 +155,7 @@ namespace MQSimEngine
 		waitingLoadPhaseFinish = false;
 		loadMileStone = CurrentTimeStamp;
 		ClearStats();
+		logBF->setMilstone(CurrentTimeStamp);
 		for(auto io_flow : waitingRunPhaseFlowList){
 			this->Register_sim_event(loadMileStone + io_flow.first, io_flow.second);
 		}

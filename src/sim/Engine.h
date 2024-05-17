@@ -7,7 +7,7 @@
 #include "Sim_Defs.h"
 #include "EventTree.h"
 #include "Sim_Object.h"
-
+#include "LogBF.h"
 namespace MQSimEngine {
 	class Engine
 	{
@@ -42,6 +42,7 @@ namespace MQSimEngine {
 
 		sim_time_type loadMileStone;
 		bool loadPhase = false;
+		LogBF* logBF;
 	private:
 		sim_time_type _sim_time;
 		EventTree* _EventList;

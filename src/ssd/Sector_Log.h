@@ -2,6 +2,7 @@
 #define SECTOR_LOG_H
 
 #include "Flash_Block_Manager_Base.h"
+#include "BitFilter/BitFilter.h"
 
 
 #define TO_FULL_PAGE(sectorsPerPage) (((uint64_t)1 << sectorsPerPage) - (uint64_t)1)
@@ -58,6 +59,8 @@ namespace SSD_Components{
         std::list<std::pair<NVM_Transaction_Flash_WR *, page_status_type>> waitingTrPageBufferFreeSpace;
         std::unordered_map<NVM_Transaction_Flash_RD *, uint64_t> userTrBuffer;
 
+        BitFilter* bitFilter;
+
         bool ongoingFlush;
 
         void allocate_page_in_sector_area(NVM_Transaction_Flash_WR* transaction);
@@ -74,10 +77,12 @@ namespace SSD_Components{
         void waitingPrepareMergeTrHandler(const PPA_type& ppa);
         void waitingPageBufferFreeSpaceTrHandler();
         void userTrBufferHandler(NVM_Transaction_Flash_RD* transaction);
+
+        void sendReadTr(std::list<NVM_Transaction*> transaction_list);
     public:
         void(*dcmServicedTransactionHandler)(NVM_Transaction_Flash*);
         Sector_Log(const stream_id_type& in_streamID, const uint32_t& in_sectorsPerPage, const uint32_t& in_pagesPerBlock, const uint32_t& in_maxBlockSize,
-        Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm);
+        Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, uint64_t numberOfLogicalSectors);
         ~Sector_Log();
         void setCompleteTrHandler(void(*transferCompletedTrToDCM)(NVM_Transaction_Flash*));
         void handleInputTransaction(std::list<NVM_Transaction*> transaction_list);

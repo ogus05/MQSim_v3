@@ -57,6 +57,7 @@ public:
 	static Flash_Parameter_Set Flash_Parameters;
 
 	static unsigned int SL_Max_Block_Count;
+	static sim_time_type BF_Milestone; 
 
 	void XML_serialize(Utils::XmlWriter& xmlwriter);
 	void XML_deserialize(rapidxml::xml_node<> *node);

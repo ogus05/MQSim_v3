@@ -15,7 +15,7 @@ namespace SSD_Components
     
     Sector_Log* Sector_Log::instance = NULL;
     Sector_Log::Sector_Log(const stream_id_type& in_streamID, const uint32_t& in_sectorsPerPage, const uint32_t& in_pagesPerBlock, const uint32_t& in_maxBlockSize,
-    Address_Mapping_Unit_Page_Level *in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm){
+    Address_Mapping_Unit_Page_Level *in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, uint64_t numberOfLogicalSectors){
         
         maxBlockSize = in_maxBlockSize;        //in_maxBlockSize;
         sectorsPerPage = in_sectorsPerPage;
@@ -30,6 +30,7 @@ namespace SSD_Components
         pageBuffer = new Page_Buffer(sectorsPerPage, this);
         sectorLogWF = std::list<Sector_Log_WF_Entry*>();
         ongoingFlush = false;
+
     }
 
     Sector_Log::~Sector_Log()
@@ -271,44 +272,9 @@ namespace SSD_Components
 
     }
 
-    void Sector_Log::handleInputTransaction(std::list<NVM_Transaction *> transaction_list)
+    void Sector_Log::sendReadTr(std::list<NVM_Transaction*> transaction_list)
     {
-        if(maxBlockSize == 0){
-            amu->Translate_lpa_to_ppa_and_dispatch(transaction_list);
-        }
-        else if (transaction_list.front()->Type == SSD_Components::Transaction_Type::WRITE)
-        {
-            std::list<NVM_Transaction*> fullPageWriteList;
-
-            for (auto& transaction : transaction_list)
-            {
-                NVM_Transaction_Flash_WR *tr = (NVM_Transaction_Flash_WR *)transaction;
-                //Full page should be transferred to the AMU.
-                if((count_sector_no_from_status_bitmap(tr->write_sectors_bitmap) == sectorsPerPage)){
-                    //Before transfer to amu, remove all the related data in the Sector Log.
-                    pageBuffer->Remove(tr->LPA, tr->write_sectors_bitmap);
-                    sectorMap->Remove(tr->LPA);
-                    fullPageWriteList.push_back(tr);
-                }
-                //Partial page should be transferred to the Page Buffer.
-                else
-                {
-                    waitingTrPageBufferFreeSpace.push_back({tr, tr->write_sectors_bitmap});
-                }
-            }
-            //remainSectors can indicate whether the Page Buffer is full or not.
-            if(waitingTrPageBufferFreeSpace.size() > 0){
-                waitingPageBufferFreeSpaceTrHandler();
-            }
-
-            if(fullPageWriteList.size() > 0) {
-                amu->Translate_lpa_to_ppa_and_dispatch(fullPageWriteList);
-            }
-        }
-        //All of the read transactions should look up the Page Buffer, Sector Map.
-        else if (transaction_list.front()->Type == SSD_Components::Transaction_Type::READ)
-        {
-            //If Sector Area doesn't store all of the sectors the read transaction needed,
+        //If Sector Area doesn't store all of the sectors the read transaction needed,
             //A new read transaction is created and the origin transaction are temporarily buffered(Sector_Log::userReadBuffer).
             //This variable stores the new read transactions created from the transaction_list which should be transferred to AMU.
             std::list<NVM_Transaction *> transactionListForTransferAMU;
@@ -342,9 +308,16 @@ namespace SSD_Components
                     }
                 }
                 
-                page_status_type sectorsExistInPageBuffer = pageBuffer->Exists(tr->LPA);
+                if (sectorsToRead == 0)
+                {
+                    completeTrList.push_back(tr);
+                    continue;
+                } else{
+                    userTrBuffer.insert({tr, 0});
+                }
 
-                userTrBuffer.insert({tr, 0});
+
+                page_status_type sectorsExistInPageBuffer = pageBuffer->Exists(tr->LPA);
                 if((sectorsToRead & sectorsExistInPageBuffer) > 0){
                     dataSizeToRead -= count_sector_no_from_status_bitmap(sectorsToRead & sectorsExistInPageBuffer) * SECTOR_SIZE_IN_BYTE;
                     sectorSizeToReadDRAM += count_sector_no_from_status_bitmap(sectorsToRead & sectorsExistInPageBuffer);
@@ -353,27 +326,19 @@ namespace SSD_Components
                     partialPageReadFromDRAM->push_back(tr);
                     userTrBuffer.at(tr)++;
                 }
-                if (sectorsToRead == 0)
-                {
-                    if(userTrBuffer.at(tr) == 0){
-                        completeTrList.push_back(tr);
-                        userTrBuffer.erase(tr);
-                    }
-                    continue;
-                }
-
-
-
+                
                 //PPAs for handle the sectors in the second.
                 std::unordered_map<PPA_type, page_status_type> PPAForReadTransaction;
 
                 std::vector<Sector_Map_Entry>* relatedPPA = sectorMap->getAllRelatedPPAsInLPA(tr->LPA);
                 if(relatedPPA != NULL){
+                    Simulator->logBF->addReadCount();
                     for(uint32_t sectorLocation = 0; sectorLocation < relatedPPA->size(); sectorLocation++){
                         //Looking up all sectors should be handled by the Sector Log. 
                         if((((uint64_t)1 << sectorLocation) & sectorsToRead) > 0){
                             PPA_type PPAForCurSector = relatedPPA->at(sectorLocation).ppa;
                             if(PPAForCurSector != NO_PPA){
+                                Simulator->logBF->checkRead(tr->LPA, (sectorLocation));
                                 Stats2::storeSectorData(tr->LPA, PPAForCurSector, relatedPPA->at(sectorLocation).writtenTime);
                                 if(PPAForReadTransaction.find(PPAForCurSector) == PPAForReadTransaction.end()){
                                     PPAForReadTransaction.insert({PPAForCurSector, ((uint64_t)1 << sectorLocation)});
@@ -442,7 +407,46 @@ namespace SSD_Components
             } else{
                 delete partialPageReadFromDRAM;
             }
-            
+    }
+
+    void Sector_Log::handleInputTransaction(std::list<NVM_Transaction *> transaction_list)
+    {
+        if(maxBlockSize == 0){
+            amu->Translate_lpa_to_ppa_and_dispatch(transaction_list);
+        }
+        else if (transaction_list.front()->Type == SSD_Components::Transaction_Type::WRITE)
+        {
+            std::list<NVM_Transaction*> fullPageWriteList;
+
+            for (auto& transaction : transaction_list)
+            {
+                NVM_Transaction_Flash_WR *tr = (NVM_Transaction_Flash_WR *)transaction;
+                //Full page should be transferred to the AMU.
+                if((count_sector_no_from_status_bitmap(tr->write_sectors_bitmap) == sectorsPerPage)){
+                    //Before transfer to amu, remove all the related data in the Sector Log.
+                    pageBuffer->Remove(tr->LPA, tr->write_sectors_bitmap);
+                    sectorMap->Remove(tr->LPA);
+                    fullPageWriteList.push_back(tr);
+                }
+                //Partial page should be transferred to the Page Buffer.
+                else
+                {
+                    waitingTrPageBufferFreeSpace.push_back({tr, tr->write_sectors_bitmap});
+                }
+            }
+            //remainSectors can indicate whether the Page Buffer is full or not.
+            if(waitingTrPageBufferFreeSpace.size() > 0){
+                waitingPageBufferFreeSpaceTrHandler();
+            }
+
+            if(fullPageWriteList.size() > 0) {
+                amu->Translate_lpa_to_ppa_and_dispatch(fullPageWriteList);
+            }
+        }
+        //All of the read transactions should look up the Page Buffer, Sector Map.
+        else if (transaction_list.front()->Type == SSD_Components::Transaction_Type::READ)
+        {
+            sendReadTr(transaction_list);
         }
     }
     

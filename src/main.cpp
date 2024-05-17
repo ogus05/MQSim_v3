@@ -309,6 +309,8 @@ int main(int argc, char* argv[])
 		
 		Simulator->AttachClearStats(ClearStatsFnc);
 
+		Simulator->logBF = new LogBF(exec_params->SSD_Device_Configuration.BF_Milestone, ssd_config_file_path, workload_defs_file_path
+			, exec_params->SSD_Device_Configuration.Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE);
 		
 		Simulator->Start_simulation();
 		for (auto io_flow_def = (*io_scen)->begin(); io_flow_def != (*io_scen)->end(); io_flow_def++) {
