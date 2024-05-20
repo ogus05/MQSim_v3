@@ -15,7 +15,7 @@ int Stats2::printStats2 = 0;
 std::vector<uint64_t> Stats2::mappingRelatedToGC = std::vector<uint64_t>();
 std::unordered_map<PPA_type, SectorData> Stats2::sectorDataList = std::unordered_map<PPA_type, SectorData>();
 
-void Stats2::Init_Stats2(std::string ssd_config_file_path, std::string workload_defs_file_path)
+void Stats2::Init_Stats2()
 {
     std::cout << "Stats2 - 0. skip / 1. EXTERNAL TRANSACTION / 2. CACHE / 4. MAPPING / 8. GC /"\
                     " 16. READ AND MODIFY / 32. CLEANING / 64. SECTORLOG" << std::endl;
@@ -24,15 +24,6 @@ void Stats2::Init_Stats2(std::string ssd_config_file_path, std::string workload_
         if(printStats2 > (0b10000000 - 1)){
             std::cout << "Stats - error in stats2 code" << std::endl;
         }
-
-        if(ssd_config_file_path.find("_") == std::string::npos || workload_defs_file_path.find("_") == std::string::npos){
-            std::cout << "If you want to print Stats2, ssdconfig and workload file path must include \"_\"" << std::endl;
-            std::cout << "e.g) ssdconfig_test.xml / workload_test.xml" << std::endl;
-            exit(0);
-        }
-        std::string workloadName = ssd_config_file_path.substr(ssd_config_file_path.find_last_of("_") + 1, ssd_config_file_path.find_last_of(".") - ssd_config_file_path.find_last_of("_") - 1) \
-			+ workload_defs_file_path.substr(workload_defs_file_path.find_last_of("_"), workload_defs_file_path.find_last_of(".") - workload_defs_file_path.find_last_of("_"));
-        
         struct stat info;
         if(stat("Stats2", &info) != 0){
             if(mkdir("Stats2", 0777) == -1){
@@ -41,26 +32,28 @@ void Stats2::Init_Stats2(std::string ssd_config_file_path, std::string workload_
             }
         }
 
+        std::string logFilePath = Simulator->GetLogFilePath();
+
         if(printStats2 & 0b1){
-            OFS_EXTERNALTRANSACTION = fopen(("Stats2/ET_" + workloadName).c_str(), "w");
+            OFS_EXTERNALTRANSACTION = fopen(("Stats2/ET_" + logFilePath).c_str(), "w");
             std::cout << "Start printing external transaction" << std::endl;
         } if(printStats2 & 0b10){
-            OFS_CACHE = fopen(("Stats2/CACHE_" + workloadName).c_str(), "w");
+            OFS_CACHE = fopen(("Stats2/CACHE_" + logFilePath).c_str(), "w");
             std::cout << "Start printing cache" << std::endl;
         } if(printStats2 & 0b100){
-            OFS_MAPPING = fopen(("Stats2/MAPPING_" + workloadName).c_str(), "w");
+            OFS_MAPPING = fopen(("Stats2/MAPPING_" + logFilePath).c_str(), "w");
             std::cout << "Start printing cleaning" << std::endl;
         } if(printStats2 & 0b1000){
-            OFS_GC = fopen(("Stats2/GC_" + workloadName).c_str(), "w");
+            OFS_GC = fopen(("Stats2/GC_" + logFilePath).c_str(), "w");
             std::cout << "Start printing garbage collection" << std::endl;
         } if(printStats2 & 0b10000){
-            OFS_READANDMODIFY = fopen(("Stats2/RAM_" + workloadName).c_str(), "w");
+            OFS_READANDMODIFY = fopen(("Stats2/RAM_" + logFilePath).c_str(), "w");
             std::cout << "Start printing read and modify" << std::endl;
         } if(printStats2 & 0b100000){
-            OFS_CLEANING = fopen(("Stats2/CLEANING_" + workloadName).c_str(), "w");
+            OFS_CLEANING = fopen(("Stats2/CLEANING_" + logFilePath).c_str(), "w");
             std::cout << "Start printing cleaning" << std::endl;
         } if(printStats2 & 0b1000000){
-            OFS_SECTOR = fopen(("Stats2/SECTOR_" + workloadName).c_str(), "w");
+            OFS_SECTOR = fopen(("Stats2/SECTOR_" + logFilePath).c_str(), "w");
             std::cout << "Start printing sector log" << std::endl;
         }
     } else{

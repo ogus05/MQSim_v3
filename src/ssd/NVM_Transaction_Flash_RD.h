@@ -32,7 +32,7 @@ namespace SSD_Components
 		page_status_type read_sectors_bitmap;
 		data_timestamp_type DataTimeStamp;
 
-		NVM_Transaction_Flash_RD* originTr;
+		std::list<NVM_Transaction_Flash_RD*> originTr;
 	};
 }
 

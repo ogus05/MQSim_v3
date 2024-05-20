@@ -96,7 +96,7 @@ namespace MQSimEngine
 				if(!ev->Ignore) {
 					ev->Target_sim_object->Execute_simulator_event(ev);
 					if(!loadPhase && !waitingLoadPhaseFinish){
-						logBF->logging(CurrentTimeStamp);
+						ExecutePeriodicalFnc();
 					}
 				}
 				Sim_Event* consumed_event = ev;
@@ -140,9 +140,9 @@ namespace MQSimEngine
 		return false;
 	}
 
-    void Engine::AttachClearStats(void (*ClearStats)())
+    void Engine::AttachClearStats(void(*clearStatsFnc)(sim_time_type curTimeStamp))
     {
-		this->ClearStats = ClearStats;
+		this->clearStatsFncList.push_back(clearStatsFnc);
     }
 
     void Engine::Finish_LoadPhase(sim_time_type time, Sim_Object* io_flow)
@@ -150,16 +150,50 @@ namespace MQSimEngine
         this->waitingRunPhaseFlowList.push_back({time, io_flow});
 		waitingLoadPhaseFinish = true;
     }
+    void Engine::AttachPerodicalFnc(void (*fnc)(sim_time_type curTimeStamp))
+    {
+		periodicalFncList.push_back(fnc);
+    }
+    void Engine::SetLogFilePath(std::string ssd_config_file_path, std::string workload_defs_file_path)
+    {
+		if(ssd_config_file_path.find("_") == std::string::npos || workload_defs_file_path.find("_") == std::string::npos){
+			std::cout << "ssdconfig file name and workload file name should be included under bar (\"_\")" << std::endl;
+			std::cout << "e.g) ssdconfig_test.xml / workload_test.xml" << std::endl;
+			exit(0);
+		} else{
+			this->logFilePath = ssd_config_file_path.substr(ssd_config_file_path.find_last_of("_") + 1, ssd_config_file_path.find_last_of(".") - ssd_config_file_path.find_last_of("_") - 1) \
+			+ workload_defs_file_path.substr(workload_defs_file_path.find_last_of("_"), workload_defs_file_path.find_last_of(".") - workload_defs_file_path.find_last_of("_"));
+		}
+    }
+
+    std::string Engine::GetLogFilePath()
+    {
+        return logFilePath;
+    }
+
     void Engine::Start_RunPhase()
     {
 		waitingLoadPhaseFinish = false;
 		loadMileStone = CurrentTimeStamp;
-		ClearStats();
-		logBF->setMilstone(CurrentTimeStamp);
+		ExecuteClearStatsFnc();
 		for(auto io_flow : waitingRunPhaseFlowList){
 			this->Register_sim_event(loadMileStone + io_flow.first, io_flow.second);
 		}
 
 		PRINT_MESSAGE("Start Run Phase....")
+    }
+    
+	void Engine::ExecuteClearStatsFnc()
+    {
+		for(auto& fnc : clearStatsFncList){
+			fnc(CurrentTimeStamp);
+		}
+    }
+
+    void Engine::ExecutePeriodicalFnc()
+    {
+		for(auto& fnc : periodicalFncList){
+			fnc(CurrentTimeStamp);
+		}
     }
 }

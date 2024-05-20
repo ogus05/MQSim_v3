@@ -7,7 +7,6 @@
 #include "Sim_Defs.h"
 #include "EventTree.h"
 #include "Sim_Object.h"
-#include "LogBF.h"
 namespace MQSimEngine {
 	class Engine
 	{
@@ -36,13 +35,18 @@ namespace MQSimEngine {
 		void Stop_simulation();
 		bool Has_started();
 		bool Is_integrated_execution_mode();
-		void AttachClearStats(void(*ClearStats)());
+		void AttachClearStats(void(*clearStatsFnc)(sim_time_type curTimeStamp));
 
 		void Finish_LoadPhase(sim_time_type time, Sim_Object* io_flow);
 
+		void AttachPerodicalFnc(void(*fnc)(sim_time_type curTimeStamp));
+
 		sim_time_type loadMileStone;
 		bool loadPhase = false;
-		LogBF* logBF;
+
+		void SetLogFilePath(std::string ssd_config_file_path, std::string workload_defs_file_path);
+
+		std::string GetLogFilePath();
 	private:
 		sim_time_type _sim_time;
 		EventTree* _EventList;
@@ -54,7 +58,14 @@ namespace MQSimEngine {
 		std::vector<std::pair<sim_time_type, Sim_Object*>> waitingRunPhaseFlowList;
 		bool waitingLoadPhaseFinish;
 		void Start_RunPhase();
-		void(*ClearStats)();
+		
+		std::vector<void(*)(sim_time_type curTimeStamp)> clearStatsFncList;
+		void ExecuteClearStatsFnc();
+
+		std::vector<void(*)(sim_time_type curTimeStamp)> periodicalFncList;
+		void ExecutePeriodicalFnc();
+
+		std::string logFilePath;
 	};
 }
 

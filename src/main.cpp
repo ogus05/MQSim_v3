@@ -18,7 +18,7 @@ SSD_Device* G_SSD;
 Host_System* G_Host;
 
 
-void ClearStatsFnc(){
+void ClearStatsFnc(sim_time_type curTimeStamp){
 	G_SSD->Clear_Stats();
 	G_Host->Clear_Stats();
 }
@@ -291,6 +291,7 @@ int main(int argc, char* argv[])
 
 		//The simulator should always be reset, before starting the actual simulation
 		Simulator->Reset();
+		Simulator->SetLogFilePath(ssd_config_file_path, workload_defs_file_path);
 
 		exec_params->Host_Configuration.IO_Flow_Definitions.clear();
 		for (auto io_flow_def = (*io_scen)->begin(); io_flow_def != (*io_scen)->end(); io_flow_def++) {
@@ -305,12 +306,9 @@ int main(int argc, char* argv[])
 		G_SSD = &ssd;
 		G_Host = &host;
 
-		Stats2::Init_Stats2(ssd_config_file_path, workload_defs_file_path);
+		Stats2::Init_Stats2();
 		
 		Simulator->AttachClearStats(ClearStatsFnc);
-
-		Simulator->logBF = new LogBF(exec_params->SSD_Device_Configuration.BF_Milestone, ssd_config_file_path, workload_defs_file_path
-			, exec_params->SSD_Device_Configuration.Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE);
 		
 		Simulator->Start_simulation();
 		for (auto io_flow_def = (*io_scen)->begin(); io_flow_def != (*io_scen)->end(); io_flow_def++) {

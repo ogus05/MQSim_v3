@@ -1,46 +1,44 @@
 #include "../nvm_chip/flash_memory/FlashTypes.h"
 #include <list>
-#include <vector>
+#include <map>
+#include "Engine.h"
+#include "Sector_Log.h"
 
-class SectorGroup
-{
-    friend class SectorCluster;
-private:
-    LPA_type lpa;
-    page_status_type sectors;
-    SectorGroup(LPA_type lpa, page_status_type sectors);
-public:
+namespace SSD_Components{
+    class SectorCluster
+    {
+    private:
+        std::list<std::pair<LPA_type, page_status_type>> clusteredSectors;
+    public:
+        SectorCluster();
+        void addSectors(LPA_type lpa, page_status_type sectors);
+    };
 
-};
+    class BitFilter
+    {
+    private:
+        std::map<LPA_type, page_status_type> filter;
+        uint64_t filterSize;
+        uint32_t sectorsPerPage;
 
-class SectorCluster
-{
-private:
-    std::list<SectorGroup*> clusteredSectors;
-    uint32_t sizeInSectors;
-public:
-    void addSectors(LPA_type lpa, page_status_type sectors);
-    uint32_t getSizeInSectors();
-};
+        Sector_Log* sectorLog;
 
-class BitFilter
-{
-private:
-    std::vector<uint64_t>* filter;
-    uint32_t sectorsPerPage;
+        sim_time_type T_lastRead;
+        sim_time_type T_executeThreshold;
+        
+    public:
+        BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfLogicalSector, uint32_t sectorsPerPage);
+        ~BitFilter();
+        
+        void addBit(const LPA_type& lpa, const page_status_type& sectors);
+        void removeBit(const LPA_type& lpa, const page_status_type& sectors);
 
-    sim_time_type T_lastRead;
-    sim_time_type T_executeThreshold;
-    
-    void execute();
-    std::vector<SectorCluster*>& makeCluster();
-    void readFilter();
-public:
-    BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfLogicalSector, uint32_t sectorsPerPage);
-    ~BitFilter();
+        void reset();
+        void polling();
 
-    void checkClusteringIsRequired(sim_time_type currentTime);
-    void reset();
-    void check(LPA_type lpa, page_status_type sector);
-};
+        std::list<SectorCluster*> makeCluster();
+
+        void startClustering();
+    };
+}
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Sim_Object.h"
 #include <vector>
 #include <iostream>
@@ -5,6 +7,8 @@
 class LogBF
 {
 private:
+    static LogBF* _instance;
+
     sim_time_type logMilestone;
     std::vector<uint64_t> bitFilter;
     
@@ -19,9 +23,11 @@ private:
 public:
     void addReadCount();
     void checkRead(uint64_t lpa, uint64_t sectors);
-    void logging(sim_time_type currentTime);
 
-    void setMilstone(sim_time_type settingValue);
-    LogBF(sim_time_type logMilestone, std::string ssdconfFileName, std::string workloadFileName, uint64_t sectorsPerPage);
+    static void setMilstone(sim_time_type settingValue);
+
+    static void logging(sim_time_type currentTime); 
+
+    LogBF(sim_time_type logMilestone, std::string logFilePath, uint64_t sectorsPerPage);
     ~LogBF();
 };

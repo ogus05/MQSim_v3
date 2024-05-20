@@ -34,6 +34,8 @@ namespace SSD_Components
 		page_status_type write_sectors_bitmap;
 		data_timestamp_type DataTimeStamp;
 		WriteExecutionModeType ExecutionMode;
+
+		uint32_t flushingID;
 	};
 }
 

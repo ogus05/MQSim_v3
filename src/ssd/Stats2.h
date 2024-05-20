@@ -1,4 +1,5 @@
-
+#ifndef STATS2_H
+#define STATS2_H
 
 #include <iostream>
 #include <vector>
@@ -37,7 +38,7 @@ private:
     static int printStats2;
 
 public:
-    static void Init_Stats2(std::string ssd_config_file_path, std::string workload_defs_file_path);
+    static void Init_Stats2();
     static void Clear_Stats2();
     static void handleExternalTransaction(unsigned int trSizeInSectors, bool isWrite);
     static void handleCache(uint32_t cacheHitSizeInSectors);
@@ -49,3 +50,5 @@ public:
     static void storeSectorData(LPA_type lpa, PPA_type ppa, sim_time_type writtenTime);
     static void handleSector();
 };
+
+#endif
