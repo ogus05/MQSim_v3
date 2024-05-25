@@ -132,7 +132,7 @@ namespace SSD_Components
 	class Address_Mapping_Unit_Page_Level : public Address_Mapping_Unit_Base
 	{
 		friend class GC_and_WL_Unit_Page_Level;
-		friend class Sector_Log;
+		friend class SectorLog;
 	public:
 		Address_Mapping_Unit_Page_Level(const sim_object_id_type& id, FTL* ftl, NVM_PHY_ONFI* flash_controller, Flash_Block_Manager_Base* block_manager,
 			bool ideal_mapping_table, unsigned int cmt_capacity_in_byte, Flash_Plane_Allocation_Scheme_Type PlaneAllocationScheme,

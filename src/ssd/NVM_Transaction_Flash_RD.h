@@ -7,6 +7,7 @@
 
 namespace SSD_Components
 {
+	class SectorMapPage;
 	class NVM_Transaction_Flash_WR;
 	class NVM_Transaction_Flash_RD : public NVM_Transaction_Flash
 	{
@@ -33,6 +34,8 @@ namespace SSD_Components
 		data_timestamp_type DataTimeStamp;
 
 		std::list<NVM_Transaction_Flash_RD*> originTr;
+
+		std::list<key_type> readingSubPages;
 	};
 }
 

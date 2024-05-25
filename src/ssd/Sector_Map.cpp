@@ -3,31 +3,17 @@
 namespace SSD_Components{
 
 
-    std::vector<PPA_type>* Sector_Map::getAllRelatedPPAsInLPA(const LPA_type& lpa)
+    SectorMapPage* SectorMap::getPageForKey(key_type key)
     {
-        std::vector<PPA_type>* retVector = new std::vector<PPA_type>();
-        retVector->resize(sectorLog->sectorsPerPage, NO_PPA);
-        
-        bool isAllocatedInSectorMap = false;
-
-        for(int sectorLocation = 0; sectorLocation < sectorLog->sectorsPerPage; sectorLocation++){
-            LHA_type key = lpa * sectorLog->sectorsPerPage + sectorLocation;
-            auto curMapTable = mapTable.find(key);
-            if(curMapTable != mapTable.end()){
-                retVector->at(sectorLocation) = curMapTable->second->ppa;
-                isAllocatedInSectorMap = true;
-            }
-        }
-
-        if(isAllocatedInSectorMap){
-            return retVector;
+        auto curMapTable = mapTable.find(key);
+        if(curMapTable == mapTable.end()){
+            return NULL;
         } else{
-            delete retVector;
-            return nullptr;
+            return curMapTable->second;
         }
     }
 
-    void Sector_Map::allocateAddr(std::list<std::pair<LPA_type, page_status_type>>& sectorsList, NVM_Transaction_Flash_WR *transaction)
+    void SectorMap::allocateAddr(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction)
     {
         if(sectorMapBlockList.empty() || sectorMapBlockList.back()->blockRecord->Current_page_write_index == sectorLog->pagesPerBlock){
             createNewBlock();
@@ -36,31 +22,27 @@ namespace SSD_Components{
         curBlock->setTrAddr(transaction);
         transaction->PPA = sectorLog->amu->Convert_address_to_ppa(transaction->Address);
 
-        Sector_Map_Entry* newMapEntry = new Sector_Map_Entry(transaction->PPA, curBlock);
-        newMapEntry->writtenTime = CurrentTimeStamp;
-        newMapEntry->block = curBlock;
-        for(auto lsa : sectorsList){
-            newMapEntry->storedSectors.push_back(lsa);
+        SectorMapPage* newMapPage = new SectorMapPage(transaction->PPA, curBlock);
+        newMapPage->writtenTime = CurrentTimeStamp;
+        newMapPage->block = curBlock;
+        for(auto subPage : subPagesList){
+            newMapPage->storedSubPages.push_back(subPage);
         }
 
-        curBlock->entryList.push_front(newMapEntry);
-        newMapEntry->list_itr = curBlock->entryList.begin();
+        curBlock->pageList.push_front(newMapPage);
+        newMapPage->list_itr = curBlock->pageList.begin();
 
-        setMapTable(sectorsList, newMapEntry);
+        setMapTable(subPagesList, newMapPage);
     }
 
-    void Sector_Map::setMapTable(std::list<std::pair<LPA_type, page_status_type>> &sectorsList, Sector_Map_Entry* mapEntry)
+    void SectorMap::setMapTable(std::list<key_type> &subPagesList, SectorMapPage* mapEntry)
     {
-        for(auto lsa : sectorsList){
-            std::vector<uint32_t> sectorLocationList = sectorLog->convertBitmapToSectorLocation(lsa.second);
-            for(auto sectorLocation : sectorLocationList){
-                LHA_type key = lsa.first * sectorLog->sectorsPerPage + sectorLocation;
-                mapTable.insert({key, mapEntry});
-            }
+        for(auto subPage : subPagesList){
+            mapTable.insert({subPage, mapEntry});
         }
     }
 
-    void Sector_Map::checkMergeIsRequired()
+    void SectorMap::checkMergeIsRequired()
     {
         uint32_t mergeBlockCount = 0;
         auto victimBlock = sectorMapBlockList.begin();
@@ -73,13 +55,13 @@ namespace SSD_Components{
             (*victimBlock)->ongoingMerge = true;
             (*victimBlock)->mergeID = sectorLog->getNextID();
 
-            std::list<Sector_Map_Entry*>& validEntryList = (*victimBlock)->entryList;
+            std::list<SectorMapPage*>& validPageList = (*victimBlock)->pageList;
 
             std::set<LPA_type> lpaToMerge;
 
-            for(auto validEntry : validEntryList){
-                for(auto lsa : validEntry->storedSectors){
-                    lpaToMerge.insert(lsa.first);
+            for(auto validPage : validPageList){
+                for(auto subPage : validPage->storedSubPages){
+                    lpaToMerge.insert(SubPageCalculator::keyToLPA(subPage));
                 }
             }
 
@@ -87,36 +69,32 @@ namespace SSD_Components{
             sectorLog->lockLPA(lpaToLock);
 
             std::set<PPA_type> ppaToRead;
-            std::unordered_map<LPA_type, page_status_type> lsaToRead;
+            std::list<key_type> subPagesToRead;
             for(auto lpa : lpaToMerge){
-                auto curLSAToRead = lsaToRead.insert({lpa, 0}).first;
-                for(int sectorLocation = 0; sectorLocation < sectorLog->sectorsPerPage; sectorLocation++){
-                    LHA_type key = lpa * sectorLog->sectorsPerPage + sectorLocation;
+                for(auto subPageOffset = 0; subPageOffset < sectorLog->subPagesPerPage; subPageOffset++){
+                    key_type key = SubPageCalculator::makeKey(lpa, subPageOffset);
                     if(mapTable.find(key) != mapTable.end()){
                         ppaToRead.insert(mapTable.at(key)->ppa);
-                        curLSAToRead->second |= ((page_status_type)1 << sectorLocation);
+                        subPagesToRead.push_back(key);
                     }
                 }
             }
 
-            for(auto lsa : lsaToRead){
-                if(lsa.second == 0){
-                    PRINT_ERROR("ERROR IN CHECK MERGE IS REQUIRED")
-                }
-                Remove(lsa.first, lsa.second);
+            for(auto subPage : subPagesToRead){
+                Remove(subPage);
             }
 
             if(ppaToRead.size() > 0){
                 sectorLog->sendReadForMerge(std::list<PPA_type>(ppaToRead.begin(), ppaToRead.end()), (*victimBlock)->mergeID);
                 (*victimBlock)->remainReadCountForMerge = ppaToRead.size();
-                (*victimBlock)->mergingLSAList = lsaToRead;
+                (*victimBlock)->mergingKeyList = subPagesToRead;
             } else{
                 Merge((*victimBlock)->mergeID);
             }
         }
     }
 
-    void Sector_Map::Merge(uint32_t mergeID)
+    void SectorMap::Merge(uint32_t mergeID)
     {
         auto victimBlock = sectorMapBlockList.begin();
         while((*victimBlock)->mergeID != mergeID){
@@ -129,14 +107,14 @@ namespace SSD_Components{
         NVM_Transaction_Flash_ER *eraseTr = new NVM_Transaction_Flash_ER(Transaction_Source_Type::SECTORLOG_MERGE, sectorLog->streamID, (*(*victimBlock)->blockAddr));
         eraseTr->mergeID = (*victimBlock)->mergeID;
 
-        std::list<std::pair<LPA_type, page_status_type>> lsaToWrite;
-        for(auto lsa : (*victimBlock)->mergingLSAList){
-            lsaToWrite.push_back(lsa);
+        std::list<key_type> keyToWrite;
+        for(auto lsa : (*victimBlock)->mergingKeyList){
+            keyToWrite.push_back(lsa);
         }
-        sectorLog->sendAMUWriteForMerge(lsaToWrite, eraseTr);
+        sectorLog->sendAMUWriteForMerge(keyToWrite, eraseTr);
     }
 
-    void Sector_Map::handleMergeReadArrived(uint32_t mergeID)
+    void SectorMap::handleMergeReadArrived(uint32_t mergeID)
     {
         auto victimBlock = sectorMapBlockList.begin();
         while((*victimBlock)->mergeID != mergeID){
@@ -148,7 +126,7 @@ namespace SSD_Components{
         }
     }
 
-    void Sector_Map::eraseVictimBlock(uint32_t mergeID)
+    void SectorMap::eraseVictimBlock(uint32_t mergeID)
     {
         auto victimBlock = sectorMapBlockList.begin();
         while((*victimBlock)->mergeID != mergeID){
@@ -160,45 +138,36 @@ namespace SSD_Components{
         delete (*victimBlock);
     }
 
-    Sector_Map::~Sector_Map()
+    SectorMap::~SectorMap()
     {
         for(auto block : sectorMapBlockList){
             delete block;
         }
     }
 
-    void Sector_Map::Remove(const LPA_type &lpa, const page_status_type& sectors)
+    void SectorMap::Remove(key_type key)
     {
-        for(uint32_t sectorLocation = 0; sectorLocation < sectorLog->sectorsPerPage; sectorLocation++){
-            if((sectors & ((page_status_type)1 << sectorLocation)) == 0) continue;
-            LHA_type key = lpa * sectorLog->sectorsPerPage + sectorLocation;
-            auto curMapTable = mapTable.find(key);
-            if(curMapTable == mapTable.end()) continue;
-            Sector_Map_Entry* curMapEntry = curMapTable->second;
-            mapTable.erase(curMapTable);
-
-            auto curSectors = curMapEntry->storedSectors.begin();
-            while(curSectors != curMapEntry->storedSectors.end()){
-                if(curSectors->first == lpa && ((((page_status_type)1 << sectorLocation) & curSectors->second) != 0)){
-                    curSectors->second &= ~((page_status_type)1 << sectorLocation);
-                    if(curSectors->second == 0){
-                        curMapEntry->storedSectors.erase(curSectors);
-                        if(curMapEntry->storedSectors.size() == 0){
-                            curMapEntry->block->entryList.erase(curMapEntry->list_itr);
-                            delete curMapEntry;
-                        }
+        auto curMapTable = mapTable.find(key);
+        if(curMapTable != mapTable.end()){
+            SectorMapPage* curMapPage = curMapTable->second;
+            auto subPageItr = curMapPage->storedSubPages.begin();
+            while(true){
+                if((*subPageItr) == key){
+                    curMapPage->storedSubPages.erase(subPageItr);
+                    if(curMapPage->storedSubPages.size() == 0){
+                        curMapPage->block->pageList.erase(curMapPage->list_itr);
+                        delete curMapPage;
                     }
                     break;
                 } else{
-                    curSectors++;
+                    subPageItr++;
                 }
             }
-            
+            mapTable.erase(curMapTable);
         }
-
     }
 
-    void Sector_Map::createNewBlock()
+    void SectorMap::createNewBlock()
     {
         NVM::FlashMemory::Physical_Page_Address* blockAddr = new NVM::FlashMemory::Physical_Page_Address();
 		PlaneBookKeepingType* planeRecordToReturn = sectorLog->amu->getColdPlane(sectorLog->streamID, blockAddr);
@@ -210,7 +179,7 @@ namespace SSD_Components{
         checkMergeIsRequired();
     }
 
-    Sector_Map_Entry::Sector_Map_Entry(const PPA_type& in_ppa, SectorMapBlock* in_block)
+    SectorMapPage::SectorMapPage(const PPA_type& in_ppa, SectorMapBlock* in_block)
     {
         ppa = in_ppa;
         block = in_block;
@@ -238,7 +207,7 @@ namespace SSD_Components{
 
     SectorMapBlock::~SectorMapBlock()
     {
-        for(auto entry : entryList){
+        for(auto entry : pageList){
             delete entry;
         }
     }

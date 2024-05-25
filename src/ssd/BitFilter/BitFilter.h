@@ -5,38 +5,41 @@
 #include "Sector_Log.h"
 
 namespace SSD_Components{
+
+
     class SectorCluster
     {
     private:
-        std::list<std::pair<LPA_type, page_status_type>> clusteredSectors;
+        std::list<key_type> clusteredSectors;
     public:
         SectorCluster();
-        void addSectors(LPA_type lpa, page_status_type sectors);
+        void addSubPage(key_type key);
     };
 
     class BitFilter
     {
     private:
-        std::map<LPA_type, page_status_type> filter;
+        std::map<uint64_t, uint64_t> filter;
         uint64_t filterSize;
-        uint32_t sectorsPerPage;
+        uint32_t subPagesPerPage;
 
-        Sector_Log* sectorLog;
+        SectorLog* sectorLog;
 
         sim_time_type T_lastRead;
         sim_time_type T_executeThreshold;
+
+        std::list<SectorCluster*> makeClusterList();
         
     public:
-        BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfLogicalSector, uint32_t sectorsPerPage);
+        BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfLogicalSector, uint32_t subPagesPerPage);
         ~BitFilter();
         
-        void addBit(const LPA_type& lpa, const page_status_type& sectors);
-        void removeBit(const LPA_type& lpa, const page_status_type& sectors);
+        void addBit(const LPA_type& lpa, const page_status_type& subPageBitmap);
+        void removeBit(const LPA_type& lpa, const page_status_type& subPageBitmap);
 
         void reset();
         void polling();
 
-        std::list<SectorCluster*> makeCluster();
 
         void startClustering();
     };

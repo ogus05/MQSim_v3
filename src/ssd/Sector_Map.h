@@ -5,23 +5,22 @@
 
 namespace SSD_Components{
     
-    class Sector_Map_Entry;
+    class SectorMapPage;
     class SectorMapBlock{
     private:
     public:
         NVM::FlashMemory::Physical_Page_Address* blockAddr;
         PlaneBookKeepingType* planeRecord;
         Block_Pool_Slot_Type* blockRecord;
-        
         uint64_t remainReadCountForMerge;
 
-        std::list<Sector_Map_Entry*> entryList;
+        std::list<SectorMapPage*> pageList;
 
         bool ongoingMerge;
 
         uint32_t mergeID;
 
-        std::unordered_map<LPA_type, page_status_type> mergingLSAList;
+        std::list<key_type> mergingKeyList;
 
         void setTrAddr(NVM_Transaction_Flash_WR* tr);
 
@@ -32,44 +31,42 @@ namespace SSD_Components{
         
     };
 
-    class Sector_Map_Entry{
+    class SectorMapPage{
     private:
     public:
         PPA_type ppa;
         sim_time_type writtenTime;
 
-        std::list<Sector_Map_Entry*>::iterator list_itr;
+        std::list<SectorMapPage*>::iterator list_itr;
 
         SectorMapBlock* block;
 
-        std::list<std::pair<LPA_type, page_status_type>> storedSectors;
+        std::list<key_type> storedSubPages;
 
-        Sector_Map_Entry(const PPA_type& in_ppa, SectorMapBlock* in_block);
+        SectorMapPage(const PPA_type& in_ppa, SectorMapBlock* in_block);
     };
 
-    class Sector_Map{
+    class SectorMap{
     private:
-        Sector_Log* sectorLog;
-        std::unordered_map<LHA_type, Sector_Map_Entry*> mapTable;
+        SectorLog* sectorLog;
+        std::unordered_map<key_type, SectorMapPage*> mapTable;
 
         std::list<SectorMapBlock*> sectorMapBlockList;
 
         uint32_t maxBlockSize;
 
-        void setMapTable(std::list<std::pair<LPA_type, page_status_type>>& sectorsList, Sector_Map_Entry* mapEntry);
+        void setMapTable(std::list<key_type>& subPagesList, SectorMapPage* mapEntry);
     
         void checkMergeIsRequired();
         void Merge(uint32_t mergeID);
 
-
-
     public:
-        Sector_Map(Sector_Log* in_sectorLog, uint32_t in_maxBlockSize)
+        SectorMap(SectorLog* in_sectorLog, uint32_t in_maxBlockSize)
             :sectorLog(in_sectorLog), maxBlockSize(in_maxBlockSize) {};
-        ~Sector_Map();
-        std::vector<PPA_type>* getAllRelatedPPAsInLPA(const LPA_type& lpa);
-        void allocateAddr(std::list<std::pair<LPA_type, page_status_type>>& sectorsList, NVM_Transaction_Flash_WR *transaction);
-        void Remove(const LPA_type& lpa, const page_status_type& sectors);
+        ~SectorMap();
+        SectorMapPage* getPageForKey(key_type key);
+        void allocateAddr(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction);
+        void Remove(key_type key);
 
         void handleMergeReadArrived(uint32_t mergeID);
         void eraseVictimBlock(uint32_t mergeID);

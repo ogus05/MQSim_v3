@@ -43,7 +43,9 @@ unsigned int Device_Parameter_Set::Chip_No_Per_Channel = 4;
 SSD_Components::ONFI_Protocol Device_Parameter_Set::Flash_Comm_Protocol = SSD_Components::ONFI_Protocol::NVDDR2;
 Flash_Parameter_Set Device_Parameter_Set::Flash_Parameters;
 
-unsigned int Device_Parameter_Set::SL_Max_Block_Count = 256;
+unsigned int Device_Parameter_Set::SL_Max_Block_Count = 4096;
+unsigned int Device_Parameter_Set::SL_Max_Buffer_Size = 4096;
+unsigned int Device_Parameter_Set::SL_Sub_Page_Capacity = 4096;
 sim_time_type Device_Parameter_Set::BF_Milestone = sim_time_type(1e8);
 
 void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
@@ -376,6 +378,14 @@ void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 	val = std::to_string(SL_Max_Block_Count);
 	xmlwriter.Write_attribute_string(attr, val);
 
+	attr = "SL_Max_Buffer_Size";
+	val = std::to_string(SL_Max_Buffer_Size);
+	xmlwriter.Write_attribute_string(attr, val);
+
+	attr = "SL_Sub_Page_Capacity";
+	val = std::to_string(SL_Sub_Page_Capacity);
+	xmlwriter.Write_attribute_string(attr, val);
+
 	attr = "BF_Milestone";
 	val = std::to_string(BF_Milestone);
 	xmlwriter.Write_attribute_string(attr, val);
@@ -640,6 +650,11 @@ void Device_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
 			} else if(strcmp(param->name(), "SL_Max_Block_Count") == 0){
 				std::string val = param->value();
 				SL_Max_Block_Count = std::stoul(val);
+			} else if(strcmp(param->name(), "SL_Max_Buffer_Size") == 0){
+				std::string val = param->value();
+				SL_Max_Buffer_Size = std::stoul(val);
+			} else if (strcmp(param->name(), "SL_Sub_Page_Capacity") == 0){
+				Flash_Parameters.XML_deserialize(param);
 			} else if(strcmp(param->name(), "BF_Milestone") == 0){
 				std::string val = param->value();
 				BF_Milestone = std::stoull(val);

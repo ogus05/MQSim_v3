@@ -56,7 +56,9 @@ public:
 	static SSD_Components::ONFI_Protocol Flash_Comm_Protocol;
 	static Flash_Parameter_Set Flash_Parameters;
 
+	static unsigned int SL_Max_Buffer_Size;
 	static unsigned int SL_Max_Block_Count;
+	static unsigned int SL_Sub_Page_Capacity;
 	static sim_time_type BF_Milestone; 
 
 	void XML_serialize(Utils::XmlWriter& xmlwriter);

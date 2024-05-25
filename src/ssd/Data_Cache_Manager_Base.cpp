@@ -71,7 +71,7 @@ namespace SSD_Components
 		_my_instance->process_new_user_request(user_request);
 	}
 
-    void Data_Cache_Manager_Base::connectSectorLog(std::vector<Sector_Log*>* sectorLogList)
+    void Data_Cache_Manager_Base::connectSectorLog(std::vector<SectorLog*>* sectorLogList)
     {
 		this->sectorLog = sectorLogList;
     }

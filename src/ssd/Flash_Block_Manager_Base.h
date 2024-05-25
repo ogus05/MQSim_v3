@@ -71,7 +71,7 @@ namespace SSD_Components
 		friend class Address_Mapping_Unit_Page_Level;
 		friend class GC_and_WL_Unit_Page_Level;
 		friend class GC_and_WL_Unit_Base;
-		friend class Sector_Log;
+		friend class SectorLog;
 	public:
 		Flash_Block_Manager_Base(GC_and_WL_Unit_Base* gc_and_wl_unit, unsigned int max_allowed_block_erase_count, unsigned int total_concurrent_streams_no,
 			unsigned int channel_count, unsigned int chip_no_per_channel, unsigned int die_no_per_chip, unsigned int plane_no_per_die,

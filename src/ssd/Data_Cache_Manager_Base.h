@@ -19,7 +19,7 @@ namespace SSD_Components
 	enum class Cache_Sharing_Mode { SHARED,//each application has access to the entire cache space
 		EQUAL_PARTITIONING}; 
 	struct Memory_Transfer_Info;
-	class Sector_Log;
+	class SectorLog;
 	class Data_Cache_Manager_Base: public MQSimEngine::Sim_Object
 	{
 		friend class Data_Cache_Manager_Flash_Advanced;
@@ -39,9 +39,9 @@ namespace SSD_Components
 		void Connect_to_user_memory_transaction_serviced_signal(MemoryTransactionServicedSignalHanderType);
 		void Set_host_interface(Host_Interface_Base* host_interface);
 		virtual void Do_warmup(std::vector<Utils::Workload_Statistics*> workload_stats) = 0;
-		void connectSectorLog(std::vector<Sector_Log*>* sectorLogList);
+		void connectSectorLog(std::vector<SectorLog*>* sectorLogList);
 		virtual void service_dram_access_request(Memory_Transfer_Info* transfer_info) = 0;
-		std::vector<Sector_Log*>* sectorLog;
+		std::vector<SectorLog*>* sectorLog;
 	protected:
 		static Data_Cache_Manager_Base* _my_instance;
 		Host_Interface_Base* host_interface;

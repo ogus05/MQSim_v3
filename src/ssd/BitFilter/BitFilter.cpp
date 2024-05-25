@@ -7,47 +7,41 @@ namespace SSD_Components{
     {
     }
 
-    void SectorCluster::addSectors(LPA_type lpa, page_status_type sectors)
+    void SectorCluster::addSubPage(key_type key)
     {
-        clusteredSectors.push_back({lpa, sectors});
+        clusteredSectors.push_back(key);
     }
 
-    std::list<SectorCluster*> BitFilter::makeCluster()
+    std::list<SectorCluster*> BitFilter::makeClusterList()
     {
         std::list<SectorCluster*> sectorCluster;
 
-        SectorCluster* newSectorCluster = new SectorCluster();
-        sectorCluster.push_back(newSectorCluster);
+        SectorCluster* newSectorCluster = nullptr;
+        uint32_t remainSizeInSubPages = 0;
         
-        uint32_t remainSectorSize = sectorsPerPage;
         for(auto subFilter : filter){
-            page_status_type sectorsToInsert = 0;
-            for(int sectorLocation = 0; sectorLocation < sectorsPerPage; sectorLocation++){
-                if(remainSectorSize == 0){
-                    newSectorCluster->addSectors(subFilter.first, sectorsToInsert);
-                    sectorsToInsert = 0;
-                    remainSectorSize = sectorsPerPage;
+            for(int subFilterOffset = 0; subFilterOffset < 64; subFilterOffset++){
+                if((((uint64_t)1 << subFilterOffset) & subFilter.second) != 0){
+                    if(remainSizeInSubPages == 0){
+                        newSectorCluster = new SectorCluster();
+                        sectorCluster.push_back(newSectorCluster);
+                        remainSizeInSubPages = subPagesPerPage;
+                    }
 
-                    newSectorCluster = new SectorCluster();
-                    sectorCluster.push_back(newSectorCluster);
-                }
+                    remainSizeInSubPages--;
+                    newSectorCluster->addSubPage(subFilter.first * 64 + subFilter.second);
 
-                if((((page_status_type)1 << sectorLocation) & subFilter.second) == 1){
-                    remainSectorSize--;
-                    sectorsToInsert |= ((page_status_type)1 << sectorLocation);
                 }
 
             }
-
-            newSectorCluster->addSectors(subFilter.first, sectorsToInsert);
         }
 
         return sectorCluster;
     }
 
-    BitFilter::BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfLogicalSector, uint32_t sectorsPerPage)
+    BitFilter::BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfSubpages, uint32_t subPagesPerPage)
     {
-        this->sectorsPerPage = sectorsPerPage;
+        this->subPagesPerPage = subPagesPerPage;
 
         this->T_executeThreshold = T_executeThreshold;
         this->T_lastRead = 0;
@@ -59,25 +53,34 @@ namespace SSD_Components{
     {
     }
 
-    void BitFilter::addBit(const LPA_type &lpa, const page_status_type &sectors)
+    void BitFilter::addBit(const LPA_type &lpa, const page_status_type &subPageBitmap)
     {
-        auto subFilter = filter.find(lpa);
-        if(subFilter == filter.end()){
-            subFilter = filter.insert({lpa, 0}).first;
+        for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
+            if(((page_status_type(1) << subPageOffset) & subPageBitmap) > 0){
+                key_type key = MAKE_KEY(lpa, subPageOffset);
+                auto subFilter = filter.find(key / 64);
+                if(subFilter == filter.end()){
+                    subFilter = filter.insert({key / 64, 0}).first;
+                }
+                filterSize++;
+                subFilter->second |= (key % 64);
+            }
         }
-        filterSize += count_sector_no_from_status_bitmap(subFilter->second & sectors);
-        subFilter->second |= sectors;
         T_lastRead = CurrentTimeStamp;
     }
 
-    void BitFilter::removeBit(const LPA_type &lpa, const page_status_type &sectors)
+    void BitFilter::removeBit(const LPA_type &lpa, const page_status_type &subPageBitmap)
     {
-        auto subFilter = filter.find(lpa);
-        if(subFilter != filter.end()){
-            filterSize -= count_sector_no_from_status_bitmap(subFilter->second & sectors);
-            subFilter->second &= ~(sectors);
+        for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
+            if(((page_status_type(1) << subPageOffset) & subPageBitmap) > 0){
+                key_type key = MAKE_KEY(lpa, subPageOffset);
+                auto subFilter = filter.find(key / 64);
+                if(subFilter != filter.end()){
+                    filterSize--;
+                    subFilter->second &= ~(subPageOffset);
+                }
+            }
         }
-
     }
 
     void BitFilter::reset()
@@ -88,14 +91,26 @@ namespace SSD_Components{
 
     void BitFilter::polling()
     {
-        if(((CurrentTimeStamp - T_lastRead) > T_executeThreshold) && (filterSize > sectorsPerPage)){
+        if(((CurrentTimeStamp - T_lastRead) > T_executeThreshold) && (filterSize > subPagesPerPage * SUB_PAGE_UNIT)){
             startClustering();
         }
     }
 
     void BitFilter::startClustering()
     {
-        std::list<SectorCluster*> clusterList = makeCluster();
+        std::list<key_type> subPagesToRead;
+        for(auto subFilter : filter){
+            for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset){
+                if(((page_status_type(1) << subPageOffset) & subFilter.second) > 0){
+                    key_type key = MAKE_KEY(subFilter.first, subPageOffset);
+                    subPagesToRead.push_back(key);
+                }
+            }
+        }
+
+        sectorLog->sendReadForClustering(subPagesToRead);
+
+
     }
 
 }

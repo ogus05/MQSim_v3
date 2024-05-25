@@ -4,45 +4,44 @@
 #include "Sector_Log.h"
 
 namespace SSD_Components{
-    class Sector_Log;
-    class Sector_Log_WF_Entry;
+    class SectorLog;
     
-    class Page_Buffer_Entry{
+    class PageBufferEntry{
     private:    
     public:
-        std::list<Page_Buffer_Entry*>::iterator list_itr;
-        LPA_type lpa;
-        page_status_type sectorsBitmap;
+        std::list<PageBufferEntry*>::iterator list_itr;
+        key_type key;
+        bool dirty;
 
         uint32_t flushingID;
 
-    Page_Buffer_Entry(const LPA_type& in_lpa, const page_status_type& in_sectorsBitmap)
-        :lpa(in_lpa), sectorsBitmap(in_sectorsBitmap), flushingID(0) {};
+    PageBufferEntry(const key_type& in_key, const bool in_dirty)
+        :key(in_key), dirty(in_dirty), flushingID(0) {};
     };
 
-    class Page_Buffer{
+    class PageBuffer{
     private:
-        std::list<Page_Buffer_Entry*> entryList;
-        std::unordered_map<uint32_t, std::list<Page_Buffer_Entry*>> flushingEntryList;
+        std::list<PageBufferEntry*> entryList;
+        std::unordered_map<uint32_t, std::list<PageBufferEntry*>> flushingEntryList;
 
-        std::unordered_map<LPA_type, std::list<Page_Buffer_Entry*>> lpaMappingEntry;
+        std::unordered_map<key_type, PageBufferEntry*> keyMappingEntry;
 
         //Indicates free size of the Page Buffer.
-        uint32_t curBufferSize;
+        const uint32_t maxBufferSize;
 
-        Sector_Log* sectorLog;
+        SectorLog* sectorLog;
     public:
-        Page_Buffer(const uint32_t page_size_in_sectors, Sector_Log* sector_log)
-            :curBufferSize(0), sectorLog(sector_log) {}; 
-        ~Page_Buffer();
-        page_status_type Exists(const LPA_type& lpa);
-        void Insert(const LPA_type& lpa, const page_status_type& sectorsBitmap);
+        PageBuffer(const uint32_t maxBufferSizeInSubPages, SectorLog* in_sectorLog); 
+        ~PageBuffer();
+        bool Exists(const key_type key, bool used);
+        void insertData(const key_type& key, bool dirty);
 
-        std::list<std::pair<LPA_type, page_status_type>> getFlushEntries(const uint32_t flushingID);
         void RemoveByFlush(const uint32_t flushingID);
-        void RemoveByPageWrite(const LPA_type& lpa, const page_status_type& in_sectorsBitmap);
+        void RemoveByWrite(const key_type key);
+        void RemoveLastEntry();
 
-        uint32_t getCurrentSize();
+        bool hasFreeSpace();
+        bool isLastEntryDirty();
 
         void flush(uint32_t sectorsPerPage);
     };

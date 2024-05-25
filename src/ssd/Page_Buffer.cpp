@@ -2,164 +2,118 @@
 
 namespace SSD_Components{
 // return the LPA's sectors that stored in the Page Buffer as a bitmap.
-    page_status_type Page_Buffer::Exists(const LPA_type& lpa)
+    bool PageBuffer::Exists(const key_type key, bool used)
     {
-        page_status_type existsSectorsBitmap = 0;
+        auto entry = keyMappingEntry.find(key);
+        
+        if(entry != keyMappingEntry.end()){
+            if(used){
+                if(entry->second->flushingID == 0 && (*entryList.begin())->key != key){
+                    entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
 
-        auto mappingEntryList = lpaMappingEntry.find(lpa);
+    void PageBuffer::insertData(const key_type& key, bool dirty)
+    {
+        auto entry = keyMappingEntry.find(key);
+        if(entry == keyMappingEntry.end()){
+            PageBufferEntry* newEntry = new PageBufferEntry(key, dirty);
+            entryList.push_front(newEntry);
+            newEntry->list_itr = entryList.begin();
 
-        if(mappingEntryList != lpaMappingEntry.end()){
-            for(auto entry : mappingEntryList->second){
-                existsSectorsBitmap |= entry->sectorsBitmap;
+            keyMappingEntry.insert({key, newEntry});
+        } else{
+            entry->second->dirty |= dirty;
+            if(entry->second->flushingID == 0 && (*entryList.begin())->key != key){
+                entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
             }
         }
-
-        return existsSectorsBitmap;
     }
 
-    void Page_Buffer::Insert(const LPA_type& lpa, const page_status_type& sectorsBitmap)
-    {
-        Page_Buffer_Entry* newEntry = new Page_Buffer_Entry(lpa, sectorsBitmap);
-        entryList.push_front(newEntry);
-        newEntry->list_itr = entryList.begin();
-
-        auto mappingEntry = lpaMappingEntry.find(lpa);
-        if(mappingEntry == lpaMappingEntry.end()){
-            mappingEntry = lpaMappingEntry.insert({lpa, std::list<Page_Buffer_Entry*>()}).first;
-        }
-        mappingEntry->second.push_back(newEntry);
-        curBufferSize += count_sector_no_from_status_bitmap(newEntry->sectorsBitmap);
-    }
-
-    std::list<std::pair<LPA_type, page_status_type>> Page_Buffer::getFlushEntries(const uint32_t flushingID)
-    {
-        auto entryList = flushingEntryList.at(flushingID);
-        std::list<std::pair<LPA_type, page_status_type>> listToRet;
-
-        for(auto entry : entryList){
-            listToRet.push_back({entry->lpa, entry->sectorsBitmap});
-        }
-
-        return listToRet;
-    }
-
-    void Page_Buffer::RemoveByFlush(const uint32_t flushingID)
+    void PageBuffer::RemoveByFlush(const uint32_t flushingID)
     {
         for(auto flushingEntry : flushingEntryList.at(flushingID)){
-            std::list<Page_Buffer_Entry*>& mappingEntryList = lpaMappingEntry.at(flushingEntry->lpa);
-            auto mappingEntry = mappingEntryList.begin();
-
-            while((*mappingEntry)->flushingID != flushingID){
-                mappingEntry++;
-            }
-            mappingEntryList.erase(mappingEntry);
-            if(mappingEntryList.size() == 0){
-                lpaMappingEntry.erase(flushingEntry->lpa);
-            }
-        }
-
-        for(auto flushingEntry : flushingEntryList.at(flushingID)){
+            keyMappingEntry.erase(flushingEntry->key);
             delete flushingEntry;
         }
 
         flushingEntryList.erase(flushingID);
     }
 
-    void Page_Buffer::RemoveByPageWrite(const LPA_type &lpa, const page_status_type& in_sectorsBitmap)
+    void PageBuffer::RemoveByWrite(const key_type key)
     {
-        auto mappingEntry = lpaMappingEntry.find(lpa);
+        auto mappingEntryItr = keyMappingEntry.find(key);
+        if(mappingEntryItr != keyMappingEntry.end()){
+            auto entry = mappingEntryItr->second;
 
-        if(mappingEntry != lpaMappingEntry.end()){
-            auto entry = mappingEntry->second.begin();
-            
-            if((*entry)->flushingID == 0){
-                curBufferSize -= count_sector_no_from_status_bitmap((*entry)->sectorsBitmap & in_sectorsBitmap);
-            }
-            (*entry)->sectorsBitmap &= ~(in_sectorsBitmap);
-
-            if((*entry)->sectorsBitmap == 0){
-                if((*entry)->flushingID != 0){
-                    flushingEntryList.at((*entry)->flushingID).erase((*entry)->list_itr);
-                } else{
-                    entryList.erase((*entry)->list_itr);
-                }
-                delete (*entry);
-                mappingEntry->second.erase(entry);
-            }
-
-            if(mappingEntry->second.size() == 0){
-                lpaMappingEntry.erase(mappingEntry);
-            }
-        }
-    }
-
-    Page_Buffer::~Page_Buffer()
-    {
-        for(auto& entryList : lpaMappingEntry){
-            for(auto& entry : entryList.second){
-                delete entry;
-            }
-        }
-    }
-
-    uint32_t Page_Buffer::getCurrentSize()
-    {
-        return curBufferSize;
-    }
-
-    void Page_Buffer::flush(uint32_t sectorsPerPage)
-    {
-        uint32_t remainSectors = sectorsPerPage;
-        std::list<std::pair<Page_Buffer_Entry*, page_status_type>> entriesToFlush;
-        uint32_t flushingID = sectorLog->getNextID();
-
-        auto curEntry = entryList.rbegin();
-        while(curEntry != entryList.rend() && remainSectors != 0){
-            page_status_type flag = 1;
-            page_status_type curSectorsToInsert = 0;
-            
-            while(remainSectors != 0 && (curSectorsToInsert != (*curEntry)->sectorsBitmap)){
-                while (curSectorsToInsert == (flag & (*curEntry)->sectorsBitmap))
-                {
-                    flag = (page_status_type)1 | (flag << (page_status_type)1);
-                }
-                curSectorsToInsert = (flag & (*curEntry)->sectorsBitmap);
-                remainSectors--;
-            }
-
-            entriesToFlush.push_back({(*curEntry), curSectorsToInsert});
-            curEntry++;
-        }
-
-        if(remainSectors == 0){
-            curBufferSize -= sectorsPerPage;
-        } else{
-            PRINT_ERROR("ERROR IN FLUSH")
-        }
-
-        std::list<std::pair<LPA_type, page_status_type>> sectorsToInsert;
-
-        std::list<Page_Buffer_Entry*>& newFlushingEntryList = flushingEntryList.insert({flushingID, std::list<Page_Buffer_Entry*>()}).first->second;
-        for(auto entry : entriesToFlush){
-            if(entry.first->sectorsBitmap == entry.second){
-                this->entryList.erase(entry.first->list_itr);
-                newFlushingEntryList.push_front(entry.first);
-                entry.first->list_itr = newFlushingEntryList.begin();
-                entry.first->flushingID = flushingID;
-                sectorsToInsert.push_back({entry.first->lpa, entry.second});
+            if(entry->flushingID == 0){
+                entryList.erase(entry->list_itr);
             } else{
-                Page_Buffer_Entry* flushEntry = new Page_Buffer_Entry(entry.first->lpa, entry.second);
-                newFlushingEntryList.push_front(flushEntry);
-                flushEntry->list_itr = newFlushingEntryList.begin();
-                flushEntry->flushingID = flushingID;
-                
-                lpaMappingEntry.at(entry.first->lpa).push_back(flushEntry);
-                entry.first->sectorsBitmap &= ~(entry.second);
-                sectorsToInsert.push_back({entry.first->lpa, entry.second});
+                flushingEntryList.at(entry->flushingID).erase(entry->list_itr);
+            }
+            delete entry;
+            keyMappingEntry.erase(mappingEntryItr);
+        }
+    }
+
+    void PageBuffer::RemoveLastEntry()
+    {
+        PageBufferEntry* lastEntry = entryList.back();
+        if(lastEntry->dirty) PRINT_ERROR("LAST ENTRY HAS DIRTY DATA");
+
+        keyMappingEntry.erase(lastEntry->key);
+        entryList.erase(lastEntry->list_itr);
+        delete lastEntry;
+    }
+
+    PageBuffer::PageBuffer(const uint32_t maxBufferSizeInSubPages, SectorLog *in_sectorLog) :
+        maxBufferSize(maxBufferSizeInSubPages), sectorLog(in_sectorLog) {}
+
+    PageBuffer::~PageBuffer()
+    {
+        for(auto& entry : entryList){
+            delete entry;
+        }
+    }
+
+    bool PageBuffer::hasFreeSpace()
+    {
+        return entryList.size() < maxBufferSize;
+    }
+
+    bool PageBuffer::isLastEntryDirty()
+    {
+        return entryList.back()->dirty;
+    }
+
+    void PageBuffer::flush(uint32_t subPagesPerPage)
+    {
+        uint32_t remainSubPages = subPagesPerPage;
+        uint32_t flushingID = sectorLog->getNextID();
+        std::list<PageBufferEntry*>& entriesToFlush = flushingEntryList.insert({flushingID, std::list<PageBufferEntry*>()}).first->second;
+        std::list<key_type> subPagesToFlush;
+        auto curEntry = entryList.rbegin();
+        int i = 0;
+        while(!(curEntry == entryList.rend() || remainSubPages == 0)){
+            if((*curEntry)->dirty){
+                (*curEntry)->flushingID = flushingID;
+                entriesToFlush.push_front(*curEntry);
+                (*curEntry)->list_itr = entriesToFlush.begin();
+
+                subPagesToFlush.push_back((*curEntry)->key);
+                remainSubPages--;
+
+                curEntry = std::list<PageBufferEntry*>::reverse_iterator(entryList.erase(--curEntry.base()));
+            } else{
+                curEntry++;
             }
         }
 
-        sectorLog->sendSubPageWriteForFlush(sectorsToInsert, flushingID);
+        sectorLog->sendSubPageWriteForFlush(subPagesToFlush, flushingID);
     }
 }
     

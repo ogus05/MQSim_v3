@@ -54,6 +54,8 @@
 		<Flash_Comm_Protocol>NVDDR2</Flash_Comm_Protocol>
 
 		<SL_Max_Block_Count>128</SL_Max_Block_Count>
+		<SL_Max_Buffer_Size>33554432</SL_Max_Buffer_Size>
+		<SL_Sub_Page_Unit>4096</SL_Sub_Page_Unit>
         <BF_Milstone>10000000</BF_Milstone>
 		
 		<Flash_Parameter_Set>
