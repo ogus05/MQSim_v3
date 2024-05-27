@@ -18,7 +18,7 @@ SSD_Device* G_SSD;
 Host_System* G_Host;
 
 
-void ClearStatsFnc(sim_time_type curTimeStamp){
+void ClearStatsFnc(){
 	G_SSD->Clear_Stats();
 	G_Host->Clear_Stats();
 }

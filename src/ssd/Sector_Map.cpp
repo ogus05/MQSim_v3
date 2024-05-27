@@ -13,7 +13,7 @@ namespace SSD_Components{
         }
     }
 
-    void SectorMap::allocateAddr(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction)
+    void SectorMap::allocatePage(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction)
     {
         if(sectorMapBlockList.empty() || sectorMapBlockList.back()->blockRecord->Current_page_write_index == sectorLog->pagesPerBlock){
             createNewBlock();
@@ -25,8 +25,8 @@ namespace SSD_Components{
         SectorMapPage* newMapPage = new SectorMapPage(transaction->PPA, curBlock);
         newMapPage->writtenTime = CurrentTimeStamp;
         newMapPage->block = curBlock;
-        for(auto subPage : subPagesList){
-            newMapPage->storedSubPages.push_back(subPage);
+        for(key_type key : subPagesList){
+            newMapPage->storedSubPages.push_back(key);
         }
 
         curBlock->pageList.push_front(newMapPage);
@@ -37,13 +37,14 @@ namespace SSD_Components{
 
     void SectorMap::setMapTable(std::list<key_type> &subPagesList, SectorMapPage* mapEntry)
     {
-        for(auto subPage : subPagesList){
-            mapTable.insert({subPage, mapEntry});
+        for(key_type key : subPagesList){
+            mapTable.insert({key, mapEntry});
         }
     }
 
     void SectorMap::checkMergeIsRequired()
     {
+        if(sectorLog->bitFilter->isClusteringProcessing()) return;
         uint32_t mergeBlockCount = 0;
         auto victimBlock = sectorMapBlockList.begin();
 
@@ -60,8 +61,8 @@ namespace SSD_Components{
             std::set<LPA_type> lpaToMerge;
 
             for(auto validPage : validPageList){
-                for(auto subPage : validPage->storedSubPages){
-                    lpaToMerge.insert(SubPageCalculator::keyToLPA(subPage));
+                for(auto key : validPage->storedSubPages){
+                    lpaToMerge.insert(SubPageCalculator::keyToLPA(key));
                 }
             }
 
@@ -80,14 +81,14 @@ namespace SSD_Components{
                 }
             }
 
-            for(auto subPage : subPagesToRead){
-                Remove(subPage);
+            for(auto key : subPagesToRead){
+                sectorLog->bitFilter->removeBit(key);
+                (*victimBlock)->mergingKeyList.push_back(key);
+                Remove(key);
             }
-
             if(ppaToRead.size() > 0){
                 sectorLog->sendReadForMerge(std::list<PPA_type>(ppaToRead.begin(), ppaToRead.end()), (*victimBlock)->mergeID);
                 (*victimBlock)->remainReadCountForMerge = ppaToRead.size();
-                (*victimBlock)->mergingKeyList = subPagesToRead;
             } else{
                 Merge((*victimBlock)->mergeID);
             }

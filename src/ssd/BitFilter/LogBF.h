@@ -24,9 +24,9 @@ public:
     void addReadCount();
     void checkRead(uint64_t lpa, uint64_t sectors);
 
-    static void setMilstone(sim_time_type settingValue);
+    static void setMilstone();
 
-    static void logging(sim_time_type currentTime); 
+    static void logging(); 
 
     LogBF(sim_time_type logMilestone, std::string logFilePath, uint64_t sectorsPerPage);
     ~LogBF();

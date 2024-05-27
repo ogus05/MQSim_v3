@@ -234,7 +234,8 @@ namespace SSD_Components
 	void Data_Cache_Manager_Flash_Simple::handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction)
 	{
 		if(transaction->Source == Transaction_Source_Type::SECTORLOG_MERGE ||
-			transaction->Source == Transaction_Source_Type::SECTORLOG_USER){
+			transaction->Source == Transaction_Source_Type::SECTORLOG_USER ||
+			transaction->Source == Transaction_Source_Type::SECTORLOG_CLUSTER){
 				_my_instance->sectorLog->at(transaction->Stream_id)->handle_transaction_serviced_signal_from_PHY(transaction);
 				return;
 			}
@@ -342,6 +343,7 @@ namespace SSD_Components
 			case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_FLUSH_FINISHED:
 			case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_READ_FINISHED:
 			case Data_Cache_Simulation_Event_Type::MEMORY_WRITE_FOR_SECTORLOG_WRITE_FINISHED:
+			case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_CLUSTERING_FINISHED:
 				sectorLog->at(transfer_info->Stream_id)->servicedFromDRAMTrHandler(transfer_info);
 				break;
 		}

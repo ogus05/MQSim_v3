@@ -3,114 +3,133 @@
 
 
 namespace SSD_Components{
-    SectorCluster::SectorCluster()
+    SubPageCluster::SubPageCluster()
     {
     }
 
-    void SectorCluster::addSubPage(key_type key)
+    std::list<SubPageCluster*> BitFilter::makeClusterList()
     {
-        clusteredSectors.push_back(key);
-    }
+        std::list<SubPageCluster*> sectorClusterList;
 
-    std::list<SectorCluster*> BitFilter::makeClusterList()
-    {
-        std::list<SectorCluster*> sectorCluster;
+        SubPageCluster* newSectorCluster = new SubPageCluster();
+        sectorClusterList.push_back(newSectorCluster);
+        uint32_t remainSizeInSubPages = sectorLog->subPagesPerPage;
 
-        SectorCluster* newSectorCluster = nullptr;
-        uint32_t remainSizeInSubPages = 0;
-        
-        for(auto subFilter : filter){
-            for(int subFilterOffset = 0; subFilterOffset < 64; subFilterOffset++){
-                if((((uint64_t)1 << subFilterOffset) & subFilter.second) != 0){
-                    if(remainSizeInSubPages == 0){
-                        newSectorCluster = new SectorCluster();
-                        sectorCluster.push_back(newSectorCluster);
-                        remainSizeInSubPages = subPagesPerPage;
-                    }
-
-                    remainSizeInSubPages--;
-                    newSectorCluster->addSubPage(subFilter.first * 64 + subFilter.second);
-
-                }
-
+        for(auto key : filter){
+            newSectorCluster->clusteredSectors.push_back(key);
+            remainSizeInSubPages--;
+            if(remainSizeInSubPages == 0){
+                newSectorCluster = new SubPageCluster();
+                sectorClusterList.push_back(newSectorCluster);
+                remainSizeInSubPages = sectorLog->subPagesPerPage;
             }
         }
 
-        return sectorCluster;
+        return sectorClusterList;
     }
 
-    BitFilter::BitFilter(sim_time_type T_executeThreshold, uint64_t numberOfSubpages, uint32_t subPagesPerPage)
+    BitFilter* BitFilter::instance = NULL;
+    BitFilter::BitFilter(sim_time_type T_executeThreshold, SectorLog* sectorLog)
     {
-        this->subPagesPerPage = subPagesPerPage;
-
+        instance = this;
+        this->sectorLog = sectorLog;
+        isClustering = false;
         this->T_executeThreshold = T_executeThreshold;
         this->T_lastRead = 0;
-        filterSize = 0;
 
+        remainReadForClustering = 0;
+        remainWriteForClustering = 0;
+
+        if(T_executeThreshold != 0){
+            Simulator->AttachPerodicalFnc(polling);
+            Simulator->AttachClearStats(reset);
+        }
     }
 
     BitFilter::~BitFilter()
     {
     }
 
-    void BitFilter::addBit(const LPA_type &lpa, const page_status_type &subPageBitmap)
+    bool BitFilter::isClusteringProcessing()
     {
-        for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
-            if(((page_status_type(1) << subPageOffset) & subPageBitmap) > 0){
-                key_type key = MAKE_KEY(lpa, subPageOffset);
-                auto subFilter = filter.find(key / 64);
-                if(subFilter == filter.end()){
-                    subFilter = filter.insert({key / 64, 0}).first;
-                }
-                filterSize++;
-                subFilter->second |= (key % 64);
-            }
-        }
+        return isClustering;
+    }
+
+    void BitFilter::addBit(const key_type key)
+    {
+        filter.insert(key);
         T_lastRead = CurrentTimeStamp;
     }
 
-    void BitFilter::removeBit(const LPA_type &lpa, const page_status_type &subPageBitmap)
+    void BitFilter::removeBit(const key_type key)
     {
-        for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
-            if(((page_status_type(1) << subPageOffset) & subPageBitmap) > 0){
-                key_type key = MAKE_KEY(lpa, subPageOffset);
-                auto subFilter = filter.find(key / 64);
-                if(subFilter != filter.end()){
-                    filterSize--;
-                    subFilter->second &= ~(subPageOffset);
-                }
-            }
+        if(filter.find(key) != filter.end()){
+            filter.erase(key);
         }
     }
 
     void BitFilter::reset()
     {
-        filter.clear();
-        T_lastRead = CurrentTimeStamp;
+        instance->filter.clear();
+        instance->T_lastRead = CurrentTimeStamp;
     }
 
     void BitFilter::polling()
     {
-        if(((CurrentTimeStamp - T_lastRead) > T_executeThreshold) && (filterSize > subPagesPerPage * SUB_PAGE_UNIT)){
+        if(!instance->isClustering){
+            if(((CurrentTimeStamp - instance->T_lastRead) > instance->T_executeThreshold) && (instance->filter.size() >= instance->sectorLog->subPagesPerPage)){
+                instance->isClustering = true;
+                std::list<key_type> subPagesToRead = std::list<key_type>(instance->filter.begin(), instance->filter.end());
+                instance->sectorLog->sendReadForClustering(subPagesToRead);
+            }
+        }
+    }
+
+    void BitFilter::setRemainRead(uint32_t remainReadForClustering)
+    {
+        this->remainReadForClustering = remainReadForClustering;
+    }
+
+    void BitFilter::handleClusteringReadIsArrived()
+    {
+        remainReadForClustering--;
+        if(remainReadForClustering == 0){
             startClustering();
+        }
+    }
+
+    void BitFilter::handleClusteringWriteIsArrived()
+    {
+        remainWriteForClustering--;
+        if(remainWriteForClustering == 0){
+            endClustering();
         }
     }
 
     void BitFilter::startClustering()
     {
-        std::list<key_type> subPagesToRead;
-        for(auto subFilter : filter){
-            for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset){
-                if(((page_status_type(1) << subPageOffset) & subFilter.second) > 0){
-                    key_type key = MAKE_KEY(subFilter.first, subPageOffset);
-                    subPagesToRead.push_back(key);
-                }
-            }
+        std::list<SubPageCluster*> subPageClusterList = makeClusterList();
+
+        remainWriteForClustering = subPageClusterList.size();
+        for(SubPageCluster* subPageCluster : subPageClusterList){
+            sectorLog->sendSubPageWriteForClustering(subPageCluster->clusteredSectors);
         }
-
-        sectorLog->sendReadForClustering(subPagesToRead);
-
-
     }
 
+    void BitFilter::endClustering()
+    {
+        isClustering = false;
+        T_lastRead = CurrentTimeStamp;
+        filter.clear();
+        sectorLog->sectorMap->checkMergeIsRequired();
+        for(std::list<NVM_Transaction*>* trList : pendingTrList){
+            sectorLog->handleInputTransaction(*trList);
+            delete trList;
+        }
+        pendingTrList.clear();
+    }
+    void BitFilter::addPendingTrListUntilClustering(std::list<NVM_Transaction *> transaction_list)
+    {
+        pendingTrList.push_back(new std::list<NVM_Transaction*>(transaction_list));
+    }
 }

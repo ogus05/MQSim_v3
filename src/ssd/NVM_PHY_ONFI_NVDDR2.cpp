@@ -531,6 +531,7 @@ namespace SSD_Components {
 					case Transaction_Source_Type::USERIO:
 					case Transaction_Source_Type::SECTORLOG_MERGE:
 					case Transaction_Source_Type::SECTORLOG_USER:
+					case Transaction_Source_Type::SECTORLOG_CLUSTER:
 						_my_instance->WaitingReadTX[chip->ChannelID].push_back((*it));
 						break;
 					case Transaction_Source_Type::GC_WL:

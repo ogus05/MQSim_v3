@@ -19,9 +19,9 @@ void LogBF::checkRead(uint64_t lpa, uint64_t sectors)
     
 }
 
-void LogBF::logging(sim_time_type currentTime)
+void LogBF::logging()
 {
-    while(_instance->currentMilestone < currentTime){
+    while(_instance->currentMilestone < CurrentTimeStamp){
         _instance->loggingFile << _instance->bitFilterCount << " " << _instance->currentTermReadCount << std::endl;
         
         for(auto& e : _instance->bitFilter){
@@ -33,9 +33,9 @@ void LogBF::logging(sim_time_type currentTime)
     }
 }
 
-void LogBF::setMilstone(sim_time_type settingValue)
+void LogBF::setMilstone()
 {
-    _instance->currentMilestone = settingValue + _instance->logMilestone;
+    _instance->currentMilestone = CurrentTimeStamp + _instance->logMilestone;
     for(auto& e : _instance->bitFilter){
         e = 0;
     }

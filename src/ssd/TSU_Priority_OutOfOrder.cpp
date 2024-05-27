@@ -40,6 +40,8 @@ TSU_Priority_OutOfOrder::TSU_Priority_OutOfOrder(const sim_object_id_type &id,
     GCEraseTRQueue = new Flash_Transaction_Queue *[channel_count];
     MappingReadTRQueue = new Flash_Transaction_Queue *[channel_count];
     MappingWriteTRQueue = new Flash_Transaction_Queue *[channel_count];
+    ClusterReadTRQueue = new Flash_Transaction_Queue *[channel_count];
+    ClusterWriteTRQueue = new Flash_Transaction_Queue *[channel_count];
     nextPriorityClassRead = new IO_Flow_Priority_Class::Priority *[channel_count];
     nextPriorityClassWrite = new IO_Flow_Priority_Class::Priority * [channel_count];
     currentWeightRead = new int* [channel_count];
@@ -56,6 +58,8 @@ TSU_Priority_OutOfOrder::TSU_Priority_OutOfOrder(const sim_object_id_type &id,
         GCEraseTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
         MappingReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
         MappingWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        ClusterReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        ClusterWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
         nextPriorityClassRead[channelID] = new IO_Flow_Priority_Class::Priority[chip_no_per_channel];
         nextPriorityClassWrite[channelID] = new IO_Flow_Priority_Class::Priority[chip_no_per_channel];
         currentWeightRead[channelID] = new int[chip_no_per_channel];
@@ -78,6 +82,8 @@ TSU_Priority_OutOfOrder::TSU_Priority_OutOfOrder(const sim_object_id_type &id,
 			MergeEraseTRQueue[channelID][chipId].Set_id("Merge_Erase_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             MappingReadTRQueue[channelID][chipId].Set_id("Mapping_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             MappingWriteTRQueue[channelID][chipId].Set_id("Mapping_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
+            ClusterReadTRQueue[channelID][chipId].Set_id("Cluster_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
+            ClusterWriteTRQueue[channelID][chipId].Set_id("Cluster_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             GCReadTRQueue[channelID][chipId].Set_id("GC_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             GCWriteTRQueue[channelID][chipId].Set_id("GC_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
             GCEraseTRQueue[channelID][chipId].Set_id("GC_Erase_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chipId));
@@ -106,6 +112,8 @@ TSU_Priority_OutOfOrder::~TSU_Priority_OutOfOrder()
         delete[] GCEraseTRQueue[channelID];
         delete[] MappingReadTRQueue[channelID];
         delete[] MappingWriteTRQueue[channelID];
+        delete[] ClusterReadTRQueue[channelID];
+        delete[] ClusterWriteTRQueue[channelID];
     }
     delete[] UserReadTRQueue;
     delete[] UserWriteTRQueue;
@@ -121,6 +129,8 @@ TSU_Priority_OutOfOrder::~TSU_Priority_OutOfOrder()
     delete[] GCEraseTRQueue;
     delete[] MappingReadTRQueue;
     delete[] MappingWriteTRQueue;
+    delete[] ClusterReadTRQueue;
+    delete[] ClusterWriteTRQueue;
 }
 
 void TSU_Priority_OutOfOrder::Start_simulation()
@@ -224,6 +234,20 @@ void TSU_Priority_OutOfOrder::Report_results_in_XML(std::string name_prefix, Uti
 			MergeEraseTRQueue[channelID][chip_cntr].Report_results_in_XML(name_prefix + ".Merge_Erase_TR_Queue", xmlwriter);
 		}
 	}
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+	{
+		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+		{
+			ClusterReadTRQueue[channelID][chip_cntr].Report_results_in_XML(name_prefix + ".Merge_Erase_TR_Queue", xmlwriter);
+		}
+	}
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+	{
+		for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+		{
+			ClusterWriteTRQueue[channelID][chip_cntr].Report_results_in_XML(name_prefix + ".Merge_Erase_TR_Queue", xmlwriter);
+		}
+	}
 
     xmlwriter.Write_close_tag();
 }
@@ -291,6 +315,42 @@ void TSU_Priority_OutOfOrder::Clear_Stats()
             GCEraseTRQueue[channelID][chip_cntr].Clear_Stats();
         }
     }
+
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+    {
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+        {
+            MergeReadTRQueue[channelID][chip_cntr].Clear_Stats();
+        }
+    }
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+    {
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+        {
+            MergeWriteTRQueue[channelID][chip_cntr].Clear_Stats();
+        }
+    }
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+    {
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+        {
+            MergeEraseTRQueue[channelID][chip_cntr].Clear_Stats();
+        }
+    }
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+    {
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+        {
+            ClusterReadTRQueue[channelID][chip_cntr].Clear_Stats();
+        }
+    }
+    for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+    {
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+        {
+            ClusterWriteTRQueue[channelID][chip_cntr].Clear_Stats();
+        }
+    }
 }
 
 void TSU_Priority_OutOfOrder::Schedule()
@@ -341,6 +401,9 @@ void TSU_Priority_OutOfOrder::Schedule()
             case Transaction_Source_Type::SECTORLOG_MERGE:
                 MergeReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
                 break;
+            case Transaction_Source_Type::SECTORLOG_CLUSTER:
+                ClusterReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
+                break;
             default:
                 PRINT_ERROR("TSU_PriorityOutOfOrder: unknown source type for a read transaction!")
             }
@@ -369,6 +432,9 @@ void TSU_Priority_OutOfOrder::Schedule()
             case Transaction_Source_Type::SECTORLOG_MERGE:
                 MergeWriteTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
 				break;
+            case Transaction_Source_Type::SECTORLOG_CLUSTER:
+                ClusterWriteTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
+                break;
             default:
                 PRINT_ERROR("TSU_PriorityOutOfOrder: unknown source type for a write transaction!")
             }
@@ -449,6 +515,7 @@ Flash_Transaction_Queue *TSU_Priority_OutOfOrder::get_next_read_service_queue(NV
 bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip *chip)
 {
     Flash_Transaction_Queue *sourceQueue1 = NULL, *sourceQueue2 = NULL;
+
 
     //Flash transactions that are related to FTL mapping data have the highest priority
     if (MappingReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)

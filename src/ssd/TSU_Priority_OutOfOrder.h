@@ -55,6 +55,8 @@ private:
     Flash_Transaction_Queue **GCEraseTRQueue;
     Flash_Transaction_Queue **MappingReadTRQueue;
     Flash_Transaction_Queue **MappingWriteTRQueue;
+    Flash_Transaction_Queue **ClusterReadTRQueue;
+    Flash_Transaction_Queue **ClusterWriteTRQueue;
     IO_Flow_Priority_Class::Priority **nextPriorityClassRead;
     IO_Flow_Priority_Class::Priority **nextPriorityClassWrite;
     int **currentWeightRead;

@@ -4,7 +4,7 @@
 #include "Flash_Block_Manager_Base.h"
 #include "Address_Mapping_Unit_Page_Level.h"
 #include "TSU_Base.h"
-#include "BitFilter/LogBF.h"
+#include "BitFilter/BitFilter.h"
 
 
 #define TO_FULL_PAGE(sectorsPerPage) (((uint64_t)1 << sectorsPerPage) - (uint64_t)1)
@@ -50,25 +50,27 @@ namespace SSD_Components{
 
         std::unordered_map<LPA_type, std::list<NVM_Transaction_Flash*>> lockedTr;
 
-        LogBF* logBF;
+
+        BitFilter* bitFilter;
 
         bool readingDRAMForFlushing;
 
         void checkFlushIsRequired();
 
-        void sendSubPageWriteForFlush(std::list<key_type>& subPageList, uint32_t flushingID);
+        void sendSubPageWriteForFlush(std::list<key_type>& subPageList);
         void sendAMUWriteForMerge(std::list<key_type>& subPageList, NVM_Transaction_Flash_ER* eraseTr);
+        void sendSubPageWriteForClustering(std::list<key_type>& subPageList);
         void sendReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID);
+        void sendReadForClustering(std::list<key_type>& subPageList);
 
         void userTrBufferHandler(NVM_Transaction_Flash_RD* originTr);
         void handleUserReadTr(std::list<NVM_Transaction*> transaction_list);
 
         void lockLPA(std::list<LPA_type>& lpaToLock);
         void unlockLPA(LPA_type lpaToUnlock);
-        bool handleIsLockedLPA(NVM_Transaction_Flash* tr);
+        bool checkLPAIsLocked(LPA_type lpa);
 
         void sectorGroupAreaReadHandler(NVM_Transaction_Flash_RD* tr);
-
 
         static uint32_t getNextID();
 

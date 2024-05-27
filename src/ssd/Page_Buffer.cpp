@@ -1,4 +1,5 @@
 #include "Page_Buffer.h"
+#include "Sector_Map.h"
 
 namespace SSD_Components{
 // return the LPA's sectors that stored in the Page Buffer as a bitmap.
@@ -8,7 +9,7 @@ namespace SSD_Components{
         
         if(entry != keyMappingEntry.end()){
             if(used){
-                if(entry->second->flushingID == 0 && (*entryList.begin())->key != key){
+                if((*entryList.begin())->key != key){
                     entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
                 }
             }
@@ -28,20 +29,10 @@ namespace SSD_Components{
             keyMappingEntry.insert({key, newEntry});
         } else{
             entry->second->dirty |= dirty;
-            if(entry->second->flushingID == 0 && (*entryList.begin())->key != key){
+            if((*entryList.begin())->key != key){
                 entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
             }
         }
-    }
-
-    void PageBuffer::RemoveByFlush(const uint32_t flushingID)
-    {
-        for(auto flushingEntry : flushingEntryList.at(flushingID)){
-            keyMappingEntry.erase(flushingEntry->key);
-            delete flushingEntry;
-        }
-
-        flushingEntryList.erase(flushingID);
     }
 
     void PageBuffer::RemoveByWrite(const key_type key)
@@ -49,12 +40,7 @@ namespace SSD_Components{
         auto mappingEntryItr = keyMappingEntry.find(key);
         if(mappingEntryItr != keyMappingEntry.end()){
             auto entry = mappingEntryItr->second;
-
-            if(entry->flushingID == 0){
-                entryList.erase(entry->list_itr);
-            } else{
-                flushingEntryList.at(entry->flushingID).erase(entry->list_itr);
-            }
+            entryList.erase(entry->list_itr);
             delete entry;
             keyMappingEntry.erase(mappingEntryItr);
         }
@@ -80,6 +66,27 @@ namespace SSD_Components{
         }
     }
 
+    void PageBuffer::setClean(const key_type key)
+    {
+        auto mappingEntry = keyMappingEntry.find(key);
+        if(mappingEntry != keyMappingEntry.end()){
+            mappingEntry->second->dirty = 0;
+        } else{
+            PRINT_ERROR("ERROR IN PAGE BUFFER SET CLEAN")
+        }
+        
+    }
+
+    bool PageBuffer::isDirty(const key_type key)
+    {
+        auto mappingEntry = keyMappingEntry.find(key);
+        if(mappingEntry != keyMappingEntry.end()){
+            return mappingEntry->second->dirty;
+        } else{
+            PRINT_ERROR("ERROR IN PAGE BUFFER SET CLEAN")
+        }
+    }
+
     bool PageBuffer::hasFreeSpace()
     {
         return entryList.size() < maxBufferSize;
@@ -93,27 +100,29 @@ namespace SSD_Components{
     void PageBuffer::flush(uint32_t subPagesPerPage)
     {
         uint32_t remainSubPages = subPagesPerPage;
-        uint32_t flushingID = sectorLog->getNextID();
-        std::list<PageBufferEntry*>& entriesToFlush = flushingEntryList.insert({flushingID, std::list<PageBufferEntry*>()}).first->second;
         std::list<key_type> subPagesToFlush;
         auto curEntry = entryList.rbegin();
         int i = 0;
         while(!(curEntry == entryList.rend() || remainSubPages == 0)){
             if((*curEntry)->dirty){
-                (*curEntry)->flushingID = flushingID;
-                entriesToFlush.push_front(*curEntry);
-                (*curEntry)->list_itr = entriesToFlush.begin();
-
                 subPagesToFlush.push_back((*curEntry)->key);
                 remainSubPages--;
+            }
+            curEntry++;
+        }
 
-                curEntry = std::list<PageBufferEntry*>::reverse_iterator(entryList.erase(--curEntry.base()));
+        for(auto key : subPagesToFlush){
+            auto curEntry = keyMappingEntry.find(key);
+            if(curEntry == keyMappingEntry.end()){
+                PRINT_ERROR("ERROR IN FLUSH")
             } else{
-                curEntry++;
+                entryList.erase(curEntry->second->list_itr);
+                keyMappingEntry.erase(curEntry);
+                delete curEntry->second;
             }
         }
 
-        sectorLog->sendSubPageWriteForFlush(subPagesToFlush, flushingID);
+        sectorLog->sendSubPageWriteForFlush(subPagesToFlush);
     }
 }
     

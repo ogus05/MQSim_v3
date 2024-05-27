@@ -62,11 +62,15 @@ namespace SSD_Components
 					break;
 				}
 			}
+			case Transaction_Source_Type::SECTORLOG_CLUSTER:{
+				return;
+			}
 		}
 
 		switch (transaction->Source) {
 			case Transaction_Source_Type::SECTORLOG_MERGE:
 			case Transaction_Source_Type::SECTORLOG_USER:
+			case Transaction_Source_Type::SECTORLOG_CLUSTER:
 			case Transaction_Source_Type::USERIO:
 			case Transaction_Source_Type::MAPPING:
 			case Transaction_Source_Type::CACHE:

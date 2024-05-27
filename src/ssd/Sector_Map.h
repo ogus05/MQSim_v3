@@ -57,7 +57,6 @@ namespace SSD_Components{
 
         void setMapTable(std::list<key_type>& subPagesList, SectorMapPage* mapEntry);
     
-        void checkMergeIsRequired();
         void Merge(uint32_t mergeID);
 
     public:
@@ -65,13 +64,14 @@ namespace SSD_Components{
             :sectorLog(in_sectorLog), maxBlockSize(in_maxBlockSize) {};
         ~SectorMap();
         SectorMapPage* getPageForKey(key_type key);
-        void allocateAddr(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction);
+        void allocatePage(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction);
         void Remove(key_type key);
 
         void handleMergeReadArrived(uint32_t mergeID);
         void eraseVictimBlock(uint32_t mergeID);
 
         void createNewBlock();
+        void checkMergeIsRequired();
 
     };
 }

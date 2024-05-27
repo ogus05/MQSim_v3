@@ -11,7 +11,7 @@ namespace SSD_Components
 	class User_Request;
 	
 	enum class Transaction_Type { READ, WRITE, ERASE, UNKOWN };
-	enum class Transaction_Source_Type { USERIO, CACHE, GC_WL, MAPPING, SECTORLOG_USER, SECTORLOG_MERGE };
+	enum class Transaction_Source_Type { USERIO, CACHE, GC_WL, MAPPING, SECTORLOG_USER, SECTORLOG_MERGE, SECTORLOG_CLUSTER };
 
 
 	class NVM_Transaction

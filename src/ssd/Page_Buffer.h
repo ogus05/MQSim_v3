@@ -13,16 +13,13 @@ namespace SSD_Components{
         key_type key;
         bool dirty;
 
-        uint32_t flushingID;
-
     PageBufferEntry(const key_type& in_key, const bool in_dirty)
-        :key(in_key), dirty(in_dirty), flushingID(0) {};
+        :key(in_key), dirty(in_dirty) {};
     };
 
     class PageBuffer{
     private:
         std::list<PageBufferEntry*> entryList;
-        std::unordered_map<uint32_t, std::list<PageBufferEntry*>> flushingEntryList;
 
         std::unordered_map<key_type, PageBufferEntry*> keyMappingEntry;
 
@@ -33,10 +30,12 @@ namespace SSD_Components{
     public:
         PageBuffer(const uint32_t maxBufferSizeInSubPages, SectorLog* in_sectorLog); 
         ~PageBuffer();
+        void setClean(const key_type key);
+        bool isDirty(const key_type key);
+
         bool Exists(const key_type key, bool used);
         void insertData(const key_type& key, bool dirty);
 
-        void RemoveByFlush(const uint32_t flushingID);
         void RemoveByWrite(const key_type key);
         void RemoveLastEntry();
 

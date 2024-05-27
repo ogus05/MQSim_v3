@@ -140,7 +140,7 @@ namespace MQSimEngine
 		return false;
 	}
 
-    void Engine::AttachClearStats(void(*clearStatsFnc)(sim_time_type curTimeStamp))
+    void Engine::AttachClearStats(void(*clearStatsFnc)())
     {
 		this->clearStatsFncList.push_back(clearStatsFnc);
     }
@@ -150,7 +150,7 @@ namespace MQSimEngine
         this->waitingRunPhaseFlowList.push_back({time, io_flow});
 		waitingLoadPhaseFinish = true;
     }
-    void Engine::AttachPerodicalFnc(void (*fnc)(sim_time_type curTimeStamp))
+    void Engine::AttachPerodicalFnc(void (*fnc)())
     {
 		periodicalFncList.push_back(fnc);
     }
@@ -186,14 +186,14 @@ namespace MQSimEngine
 	void Engine::ExecuteClearStatsFnc()
     {
 		for(auto& fnc : clearStatsFncList){
-			fnc(CurrentTimeStamp);
+			fnc();
 		}
     }
 
     void Engine::ExecutePeriodicalFnc()
     {
 		for(auto& fnc : periodicalFncList){
-			fnc(CurrentTimeStamp);
+			fnc();
 		}
     }
 }

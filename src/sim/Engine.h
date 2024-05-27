@@ -35,11 +35,11 @@ namespace MQSimEngine {
 		void Stop_simulation();
 		bool Has_started();
 		bool Is_integrated_execution_mode();
-		void AttachClearStats(void(*clearStatsFnc)(sim_time_type curTimeStamp));
+		void AttachClearStats(void(*clearStatsFnc)());
 
 		void Finish_LoadPhase(sim_time_type time, Sim_Object* io_flow);
 
-		void AttachPerodicalFnc(void(*fnc)(sim_time_type curTimeStamp));
+		void AttachPerodicalFnc(void(*fnc)());
 
 		sim_time_type loadMileStone;
 		bool loadPhase = false;
@@ -59,10 +59,10 @@ namespace MQSimEngine {
 		bool waitingLoadPhaseFinish;
 		void Start_RunPhase();
 		
-		std::vector<void(*)(sim_time_type curTimeStamp)> clearStatsFncList;
+		std::vector<void(*)()> clearStatsFncList;
 		void ExecuteClearStatsFnc();
 
-		std::vector<void(*)(sim_time_type curTimeStamp)> periodicalFncList;
+		std::vector<void(*)()> periodicalFncList;
 		void ExecutePeriodicalFnc();
 
 		std::string logFilePath;
