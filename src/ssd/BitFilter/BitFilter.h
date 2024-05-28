@@ -37,7 +37,6 @@ namespace SSD_Components{
         std::list<SubPageCluster*> makeClusterList();
         
         void startClustering();
-        void endClustering();
 
         static void reset();
         static void polling();
@@ -47,6 +46,7 @@ namespace SSD_Components{
 
         void addBit(const key_type key);
         void removeBit(const key_type key);
+        void endClustering();
 
         void setRemainRead(uint32_t remainReadForClustering);
         void handleClusteringReadIsArrived();

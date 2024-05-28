@@ -25,7 +25,7 @@ namespace SSD_Components{
         SectorMapPage* newMapPage = new SectorMapPage(transaction->PPA, curBlock);
         newMapPage->writtenTime = CurrentTimeStamp;
         newMapPage->block = curBlock;
-        for(key_type key : subPagesList){
+        for(key_type& key : subPagesList){
             newMapPage->storedSubPages.push_back(key);
         }
 
@@ -38,6 +38,9 @@ namespace SSD_Components{
     void SectorMap::setMapTable(std::list<key_type> &subPagesList, SectorMapPage* mapEntry)
     {
         for(key_type key : subPagesList){
+            if(mapTable.find(key) != mapTable.end()){
+                PRINT_ERROR("ERROR IN SECTOR MAP - KEY IS ALREADY IN THE MAP TABLE : " << key)
+            }
             mapTable.insert({key, mapEntry});
         }
     }
@@ -81,6 +84,7 @@ namespace SSD_Components{
                 }
             }
 
+
             for(auto key : subPagesToRead){
                 sectorLog->bitFilter->removeBit(key);
                 (*victimBlock)->mergingKeyList.push_back(key);
@@ -109,8 +113,8 @@ namespace SSD_Components{
         eraseTr->mergeID = (*victimBlock)->mergeID;
 
         std::list<key_type> keyToWrite;
-        for(auto lsa : (*victimBlock)->mergingKeyList){
-            keyToWrite.push_back(lsa);
+        for(auto key : (*victimBlock)->mergingKeyList){
+            keyToWrite.push_back(key);
         }
         sectorLog->sendAMUWriteForMerge(keyToWrite, eraseTr);
     }
@@ -165,6 +169,8 @@ namespace SSD_Components{
                 }
             }
             mapTable.erase(curMapTable);
+        } else{
+            PRINT_ERROR("SECTOR MAP REMOVE - THERE ARE NO KEY : " << key)
         }
     }
 

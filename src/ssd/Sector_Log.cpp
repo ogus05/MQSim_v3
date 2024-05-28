@@ -62,8 +62,12 @@ namespace SSD_Components
                     for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
                         if((tr->write_sectors_bitmap & ((page_status_type)1 << (subPageOffset * SubPageCalculator::subPageUnit))) > 0){
                             key_type key = SubPageCalculator::makeKey(tr->LPA, subPageOffset);
-                            pageBuffer->RemoveByWrite(key);
-                            sectorMap->Remove(key);
+                            if(pageBuffer->Exists(key, 0)){
+                                pageBuffer->RemoveByWrite(key);
+                            }
+                            if(sectorMap->getPageForKey(key) != NULL){
+                                sectorMap->Remove(key);
+                            }
                         }
                     }
                     if((count_sector_no_from_status_bitmap(tr->write_sectors_bitmap) == (subPagesPerPage * SubPageCalculator::subPageUnit))){
@@ -267,7 +271,7 @@ namespace SSD_Components
             } else if(sectorMap->getPageForKey(key) != NULL){
                 sectorMap->Remove(key);
             } else{
-                PRINT_ERROR("ERROR IN CLUSTERING WRITE : " << key)
+                PRINT_ERROR("ERROR IN SUB PAGE WRITE FOR CLUSTERING : " << key)
             }
         }
         NVM_Transaction_Flash_WR *sectorGroupAreaWrite = new NVM_Transaction_Flash_WR(Transaction_Source_Type::SECTORLOG_CLUSTER,
@@ -299,9 +303,14 @@ namespace SSD_Components
         uint32_t DRAMReadSize = 0;
         uint32_t totalReadCount = 0;
         for(auto key : subPageList){
-
             if(pageBuffer->Exists(key, false)){
-                DRAMReadSize += SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
+                if(pageBuffer->isDirty(key)){
+                    DRAMReadSize += SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
+                } else{
+                    if(sectorMap->getPageForKey(key) == NULL){
+                        bitFilter->removeBit(key);
+                    }
+                }
             } else{
                 SectorMapPage* pageInSectorGroupArea = sectorMap->getPageForKey(key);
                 if(pageInSectorGroupArea != NULL){
@@ -324,26 +333,33 @@ namespace SSD_Components
             }
         }
 
+        uint32_t totalReadSize = 0;
 
-        if(DRAMReadSize > 0){
-            totalReadCount += 1;
-            Memory_Transfer_Info* readTransferInfo = new Memory_Transfer_Info;
-            readTransferInfo->Size_in_bytes = DRAMReadSize;
-            readTransferInfo->next_event_type = Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_CLUSTERING_FINISHED;
-            readTransferInfo->Stream_id = streamID;
-            dcm->service_dram_access_request(readTransferInfo);
-        }
-
-        if(trListForTransferTSU.size() > 0){
-            totalReadCount += trListForTransferTSU.size();
-            tsu->Prepare_for_transaction_submit();
-            for(auto& tr : trListForTransferTSU){
-                tsu->Submit_transaction(tr.second);
+        if(totalReadCount >= subPagesPerPage){
+            if(DRAMReadSize > 0){
+                totalReadCount += 1;
+                Memory_Transfer_Info* readTransferInfo = new Memory_Transfer_Info;
+                readTransferInfo->Size_in_bytes = DRAMReadSize;
+                readTransferInfo->next_event_type = Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_CLUSTERING_FINISHED;
+                readTransferInfo->Stream_id = streamID;
+                dcm->service_dram_access_request(readTransferInfo);
             }
-            tsu->Schedule();
+
+            if(trListForTransferTSU.size() > 0){
+                totalReadCount += trListForTransferTSU.size();
+                tsu->Prepare_for_transaction_submit();
+                for(auto& tr : trListForTransferTSU){
+                    tsu->Submit_transaction(tr.second);
+                }
+                tsu->Schedule();
+            }
+            bitFilter->setRemainRead(totalReadCount);
+        } else{
+            bitFilter->endClustering();
         }
 
-        bitFilter->setRemainRead(totalReadCount);
+
+
     }
 
     void SectorLog::userTrBufferHandler(NVM_Transaction_Flash_RD* originTr)

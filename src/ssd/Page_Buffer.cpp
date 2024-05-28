@@ -28,10 +28,10 @@ namespace SSD_Components{
 
             keyMappingEntry.insert({key, newEntry});
         } else{
-            entry->second->dirty |= dirty;
-            if((*entryList.begin())->key != key){
+            if (entryList.begin() != entry->second->list_itr) {
                 entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
             }
+            entry->second->dirty |= dirty;
         }
     }
 
@@ -43,6 +43,8 @@ namespace SSD_Components{
             entryList.erase(entry->list_itr);
             delete entry;
             keyMappingEntry.erase(mappingEntryItr);
+        } else{
+            PRINT_ERROR("PAGE BUFFER REMOVE BY WRITE - THERE ARE NO KEY : " << key)
         }
     }
 
@@ -83,7 +85,7 @@ namespace SSD_Components{
         if(mappingEntry != keyMappingEntry.end()){
             return mappingEntry->second->dirty;
         } else{
-            PRINT_ERROR("ERROR IN PAGE BUFFER SET CLEAN")
+            PRINT_ERROR("ERROR IN PAGE BUFFER IS DIRTY")
         }
     }
 
@@ -111,7 +113,7 @@ namespace SSD_Components{
             curEntry++;
         }
 
-        for(auto key : subPagesToFlush){
+        for(key_type key : subPagesToFlush){
             auto curEntry = keyMappingEntry.find(key);
             if(curEntry == keyMappingEntry.end()){
                 PRINT_ERROR("ERROR IN FLUSH")
