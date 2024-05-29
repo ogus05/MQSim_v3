@@ -81,7 +81,7 @@ namespace SSD_Components{
         Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors);
         ~SectorLog();
         void setCompleteTrHandler(void(*transferCompletedTrToDCM)(NVM_Transaction_Flash*));
-        void handleInputTransaction(std::list<NVM_Transaction*> transaction_list);
+        void handleInputTransaction(std::list<NVM_Transaction*>& transaction_list);
         void servicedFromDRAMTrHandler(Memory_Transfer_Info* info);
         static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
     };

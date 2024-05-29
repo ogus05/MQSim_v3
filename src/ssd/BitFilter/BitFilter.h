@@ -53,7 +53,7 @@ namespace SSD_Components{
         void handleClusteringWriteIsArrived();
 
         bool isClusteringProcessing();
-        void addPendingTrListUntilClustering(std::list<NVM_Transaction *> transaction_list);
+        void addPendingTrListUntilClustering(std::list<NVM_Transaction *>& transaction_list);
     };
 }
 

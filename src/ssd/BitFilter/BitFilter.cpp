@@ -128,7 +128,7 @@ namespace SSD_Components{
         }
         pendingTrList.clear();
     }
-    void BitFilter::addPendingTrListUntilClustering(std::list<NVM_Transaction *> transaction_list)
+    void BitFilter::addPendingTrListUntilClustering(std::list<NVM_Transaction *>& transaction_list)
     {
         pendingTrList.push_back(new std::list<NVM_Transaction*>(transaction_list));
     }

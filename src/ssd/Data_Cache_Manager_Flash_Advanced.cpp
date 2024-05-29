@@ -387,7 +387,7 @@ namespace SSD_Components
 			transaction->Source == Transaction_Source_Type::SECTORLOG_CLUSTER){
 				_my_instance->sectorLog->at(transaction->Stream_id)->handle_transaction_serviced_signal_from_PHY(transaction);
 				return;
-			}
+		}
 		//First check if the transaction source is a user request or the cache itself
 		if (transaction->Source != Transaction_Source_Type::USERIO && transaction->Source != Transaction_Source_Type::CACHE) {
 			return;

@@ -41,7 +41,7 @@ namespace SSD_Components
         this->dcmServicedTransactionHandler = completeTrHandler;
     }
 
-    void SectorLog::handleInputTransaction(std::list<NVM_Transaction *> transaction_list)
+    void SectorLog::handleInputTransaction(std::list<NVM_Transaction *>& transaction_list)
     {
 
         if(maxBlockSize == 0){
@@ -53,7 +53,7 @@ namespace SSD_Components
             std::list<NVM_Transaction_Flash_WR*>* subPageWriteList = new std::list<NVM_Transaction_Flash_WR*>();
             uint32_t sectorsInsertToBuffer = 0;
 
-            for (auto& transaction : transaction_list)
+            for (auto transaction : transaction_list)
             {
                 NVM_Transaction_Flash_WR *tr = (NVM_Transaction_Flash_WR *)transaction;
                 if(checkLPAIsLocked(tr->LPA)){
@@ -72,7 +72,6 @@ namespace SSD_Components
                     }
                     if((count_sector_no_from_status_bitmap(tr->write_sectors_bitmap) == (subPagesPerPage * SubPageCalculator::subPageUnit))){
                         fullPageWriteList.push_back(tr);
-
                         for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
                             key_type key = SubPageCalculator::makeKey(tr->LPA, subPageOffset);
                             bitFilter->removeBit(key);
@@ -80,7 +79,6 @@ namespace SSD_Components
                     } else{
                         sectorsInsertToBuffer += count_sector_no_from_status_bitmap(tr->write_sectors_bitmap);
                         subPageWriteList->push_back(tr);
-
                         for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
                             if((tr->write_sectors_bitmap & ((page_status_type)1 << (subPageOffset * SubPageCalculator::subPageUnit))) > 0){
                                 key_type key = SubPageCalculator::makeKey(tr->LPA, subPageOffset);
@@ -439,7 +437,7 @@ namespace SSD_Components
             delete ((std::list<NVM_Transaction_Flash_RD*>*)info->Related_request);
         } break;
         case Data_Cache_Simulation_Event_Type::MEMORY_WRITE_FOR_SECTORLOG_WRITE_FINISHED:{
-            for(auto& tr : *((std::list<NVM_Transaction_Flash_WR*>*)info->Related_request)){
+            for(auto tr : *((std::list<NVM_Transaction_Flash_WR*>*)info->Related_request)){
                 dcmServicedTransactionHandler(tr);
             }
             for(auto& tr : *((std::list<NVM_Transaction_Flash_WR*>*)info->Related_request)){
