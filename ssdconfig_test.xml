@@ -53,7 +53,7 @@
 		<Chip_No_Per_Channel>2</Chip_No_Per_Channel>
 		<Flash_Comm_Protocol>NVDDR2</Flash_Comm_Protocol>
 
-		<SL_Max_Block_Count>128</SL_Max_Block_Count>
+		<SL_Max_Block_Count>4096</SL_Max_Block_Count>
 		<SL_Max_Buffer_Size>33554432</SL_Max_Buffer_Size>
 		<SL_Sub_Page_Unit>4096</SL_Sub_Page_Unit>
         <BF_Milestone>100000000</BF_Milestone>

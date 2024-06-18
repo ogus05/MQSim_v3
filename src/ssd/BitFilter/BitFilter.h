@@ -32,7 +32,7 @@ namespace SSD_Components{
 
         uint32_t remainReadForClustering;
         uint32_t remainWriteForClustering;
-        std::list<std::list<NVM_Transaction *>*> pendingTrList;
+        std::list<std::list<NVM_Transaction_Flash *>*> pendingTrList;
 
         std::list<SubPageCluster*> makeClusterList();
         
@@ -53,7 +53,7 @@ namespace SSD_Components{
         void handleClusteringWriteIsArrived();
 
         bool isClusteringProcessing();
-        void addPendingTrListUntilClustering(std::list<NVM_Transaction *>& transaction_list);
+        void addPendingTrListUntilClustering(std::list<NVM_Transaction_Flash *>& transaction_list);
     };
 }
 

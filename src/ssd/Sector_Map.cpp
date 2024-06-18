@@ -39,7 +39,7 @@ namespace SSD_Components{
     {
         for(key_type key : subPagesList){
             if(mapTable.find(key) != mapTable.end()){
-                PRINT_ERROR("ERROR IN SECTOR MAP - KEY IS ALREADY IN THE MAP TABLE : " << key)
+                Remove(key);
             }
             mapTable.insert({key, mapEntry});
         }

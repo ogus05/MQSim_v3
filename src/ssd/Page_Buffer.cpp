@@ -99,12 +99,11 @@ namespace SSD_Components{
         return entryList.back()->dirty;
     }
 
-    void PageBuffer::flush(uint32_t subPagesPerPage)
+    std::list<key_type> PageBuffer::getLastEntries(uint32_t subPagesPerPage)
     {
         uint32_t remainSubPages = subPagesPerPage;
         std::list<key_type> subPagesToFlush;
         auto curEntry = entryList.rbegin();
-        int i = 0;
         while(!(curEntry == entryList.rend() || remainSubPages == 0)){
             if((*curEntry)->dirty){
                 subPagesToFlush.push_back((*curEntry)->key);
@@ -115,16 +114,12 @@ namespace SSD_Components{
 
         for(key_type key : subPagesToFlush){
             auto curEntry = keyMappingEntry.find(key);
-            if(curEntry == keyMappingEntry.end()){
-                PRINT_ERROR("ERROR IN FLUSH")
-            } else{
-                entryList.erase(curEntry->second->list_itr);
-                keyMappingEntry.erase(curEntry);
-                delete curEntry->second;
-            }
-        }
+            if(curEntry == keyMappingEntry.end()) PRINT_ERROR("ERROR IN FLUSH")
 
-        sectorLog->sendSubPageWriteForFlush(subPagesToFlush);
+            entryList.erase(curEntry->second->list_itr);
+            keyMappingEntry.erase(curEntry);
+            delete curEntry->second;
+        }
+        return subPagesToFlush;
     }
 }
-    

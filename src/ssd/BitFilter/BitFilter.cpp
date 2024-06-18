@@ -1,5 +1,6 @@
 #include "BitFilter.h"
 #include "SSD_Defs.h"
+#include "Data_Cache_Manager_Flash_Advanced.h"
 
 
 namespace SSD_Components{
@@ -121,15 +122,16 @@ namespace SSD_Components{
         isClustering = false;
         T_lastRead = CurrentTimeStamp;
         filter.clear();
-        sectorLog->sectorMap->checkMergeIsRequired();
-        for(std::list<NVM_Transaction*>* trList : pendingTrList){
-            sectorLog->handleInputTransaction(*trList);
+        ((Data_Cache_Manager_Flash_Advanced*)sectorLog->dcm)->handleWaitingUserRequestsQueue(sectorLog->streamID);
+        for(std::list<NVM_Transaction_Flash*>* trList : pendingTrList){
+            sectorLog->handleReadTransaction((*(std::list<NVM_Transaction*>*)trList));
             delete trList;
         }
+        sectorLog->sectorMap->checkMergeIsRequired();
         pendingTrList.clear();
     }
-    void BitFilter::addPendingTrListUntilClustering(std::list<NVM_Transaction *>& transaction_list)
+    void BitFilter::addPendingTrListUntilClustering(std::list<NVM_Transaction_Flash *>& transaction_list)
     {
-        pendingTrList.push_back(new std::list<NVM_Transaction*>(transaction_list));
+        pendingTrList.push_back(new std::list<NVM_Transaction_Flash*>(transaction_list));
     }
 }

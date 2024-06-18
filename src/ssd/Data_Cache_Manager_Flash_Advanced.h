@@ -38,6 +38,8 @@ namespace SSD_Components
 		void Execute_simulator_event(MQSimEngine::Sim_Event* ev);
 		void Setup_triggers();
 		void Do_warmup(std::vector<Utils::Workload_Statistics*> workload_stats);
+		void handleWaitingUserRequestsQueue(stream_id_type sharing_id);
+		void AddBackPressureBufferDepth(stream_id_type sharing_id, uint32_t size);
 	private:
 		NVM_PHY_ONFI * flash_controller;
 		unsigned int capacity_in_bytes, capacity_in_pages;
@@ -59,6 +61,7 @@ namespace SSD_Components
 
 		static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
 		void service_dram_access_request(Memory_Transfer_Info* request_info);
+
 	};
 }
 

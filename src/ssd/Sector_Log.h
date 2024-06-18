@@ -17,6 +17,8 @@ namespace SSD_Components{
         static key_type makeKey(LPA_type lpa, uint32_t subPageOffset);
         static LPA_type keyToLPA(key_type key);
         static page_status_type keyToSectorsBitmap(key_type key);
+        static bool isSectorMapIncludeOffset(page_status_type sectorsBitmap, uint32_t offset);
+
     };
 
     class PageBuffer;
@@ -46,25 +48,20 @@ namespace SSD_Components{
         
         std::unordered_map<NVM_Transaction_Flash_RD *, uint64_t> userTrBuffer;
 
-        std::unordered_map<PPA_type, std::list<NVM_Transaction_Flash_RD*>> readingPageList;
+        std::unordered_map<PPA_type, std::list<NVM_Transaction_Flash_RD*>> readingSectorGroupAreaList;
 
         std::unordered_map<LPA_type, std::list<NVM_Transaction_Flash*>> lockedTr;
 
 
         BitFilter* bitFilter;
 
-        bool readingDRAMForFlushing;
 
-        void checkFlushIsRequired();
-
-        void sendSubPageWriteForFlush(std::list<key_type>& subPageList);
         void sendAMUWriteForMerge(std::list<key_type>& subPageList, NVM_Transaction_Flash_ER* eraseTr);
         void sendSubPageWriteForClustering(std::list<key_type>& subPageList);
         void sendReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID);
         void sendReadForClustering(std::list<key_type>& subPageList);
 
         void userTrBufferHandler(NVM_Transaction_Flash_RD* originTr);
-        void handleUserReadTr(std::list<NVM_Transaction*> transaction_list);
 
         void lockLPA(std::list<LPA_type>& lpaToLock);
         void unlockLPA(LPA_type lpaToUnlock);
@@ -81,9 +78,14 @@ namespace SSD_Components{
         Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors);
         ~SectorLog();
         void setCompleteTrHandler(void(*transferCompletedTrToDCM)(NVM_Transaction_Flash*));
-        void handleInputTransaction(std::list<NVM_Transaction*>& transaction_list);
         void servicedFromDRAMTrHandler(Memory_Transfer_Info* info);
         static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
+
+        void removeSectorGroupArea(LPA_type lpa, page_status_type sectorsBitmap);
+        bool insertSectorCache(NVM_Transaction_Flash_WR* tr);
+        bool checkFlushIsRequired();
+        page_status_type ExistsInSectorCache(LPA_type lpa, page_status_type sectorsBitmap);
+        void handleReadTransaction(std::list<NVM_Transaction*>& transactionList);
     };
 }
 

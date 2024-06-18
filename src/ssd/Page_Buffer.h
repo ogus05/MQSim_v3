@@ -42,7 +42,7 @@ namespace SSD_Components{
         bool hasFreeSpace();
         bool isLastEntryDirty();
 
-        void flush(uint32_t sectorsPerPage);
+        std::list<key_type> getLastEntries(uint32_t subPagesPerPage);
     };
 }
 
