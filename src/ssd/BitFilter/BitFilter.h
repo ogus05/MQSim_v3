@@ -6,6 +6,7 @@
 #include <map>
 #include "Engine.h"
 #include "Sector_Log.h"
+#include "Stats2.h"
 
 namespace SSD_Components{
 
@@ -21,20 +22,19 @@ namespace SSD_Components{
     {
     private:
         static BitFilter* instance;
-
-        std::set<key_type> filter;
         SectorLog* sectorLog;
+
+        std::set<key_type>* filter;
+        std::set<key_type>* processingFilter;
 
         sim_time_type T_lastRead;
         sim_time_type T_executeThreshold;
 
-        bool isClustering;
-
         uint32_t remainReadForClustering;
         uint32_t remainWriteForClustering;
-        std::list<std::list<NVM_Transaction_Flash *>*> pendingTrList;
 
-        std::list<SubPageCluster*> makeClusterList();
+        std::list<SubPageCluster*>* makeClusterList();
+
         
         void startClustering();
 
@@ -44,8 +44,8 @@ namespace SSD_Components{
         BitFilter(sim_time_type T_executeThreshold, SectorLog* sectorLog);
         ~BitFilter();
 
-        void addBit(const key_type key);
-        void removeBit(const key_type key);
+        void addKey(const key_type key);
+        void removeKey(const key_type key);
         void endClustering();
 
         void setRemainRead(uint32_t remainReadForClustering);
@@ -53,7 +53,6 @@ namespace SSD_Components{
         void handleClusteringWriteIsArrived();
 
         bool isClusteringProcessing();
-        void addPendingTrListUntilClustering(std::list<NVM_Transaction_Flash *>& transaction_list);
     };
 }
 

@@ -140,6 +140,8 @@ void IO_Flow_Trace_Based::Start_simulation()
 		}
 	}
 
+	Stats2::setLoggingMilestone(last_request_arrival_time_2 / 100);
+
 	trace_file.close();
 	PRINT_MESSAGE("Trace file: " << trace_file_path << " seems healthy");
 

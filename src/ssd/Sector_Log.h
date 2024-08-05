@@ -52,13 +52,15 @@ namespace SSD_Components{
 
         std::unordered_map<LPA_type, std::list<NVM_Transaction_Flash*>> lockedTr;
 
-
         BitFilter* bitFilter;
+
+        std::list<std::list<NVM_Transaction_Flash*>*> pendingReadTrListWhileClustering;
+        std::set<User_Request*> pendingWriteReqListWhileClustering;
 
 
         void sendAMUWriteForMerge(std::list<key_type>& subPageList, NVM_Transaction_Flash_ER* eraseTr);
-        void sendSubPageWriteForClustering(std::list<key_type>& subPageList);
-        void sendReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID);
+        void sendSubPageWriteForClustering(std::list<SubPageCluster*>& subPageList);
+        void sendTSUReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID);
         void sendReadForClustering(std::list<key_type>& subPageList);
 
         void userTrBufferHandler(NVM_Transaction_Flash_RD* originTr);
@@ -72,9 +74,10 @@ namespace SSD_Components{
         static uint32_t getNextID();
 
 
+
     public:
         void(*dcmServicedTransactionHandler)(NVM_Transaction_Flash*);
-        SectorLog(const stream_id_type in_streamID, const uint32_t in_subPagesPerPage, const uint32_t in_pagesPerBlock, const uint32_t in_maxBlockSize, const uint32_t in_maxBufferSize, const uint32_t in_subPageUnit,
+        SectorLog(const stream_id_type in_streamID, const uint32_t in_subPagesPerPage, const uint32_t in_pagesPerBlock, const uint32_t in_maxBlockSize, const uint32_t in_sectorCacheCapacity, const uint32_t in_subPageUnit,
         Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors);
         ~SectorLog();
         void setCompleteTrHandler(void(*transferCompletedTrToDCM)(NVM_Transaction_Flash*));
@@ -83,9 +86,16 @@ namespace SSD_Components{
 
         void removeSectorGroupArea(LPA_type lpa, page_status_type sectorsBitmap);
         bool insertSectorCache(NVM_Transaction_Flash_WR* tr);
-        bool checkFlushIsRequired();
+        bool checkFlushIsRequired(uint32_t sizeToWriteInSectors);
         page_status_type ExistsInSectorCache(LPA_type lpa, page_status_type sectorsBitmap);
-        void handleReadTransaction(std::list<NVM_Transaction*>& transactionList);
+        void queryReadTrList(std::list<NVM_Transaction*>& transactionList);
+
+        void addPendingWriteReqListWhileClustering(User_Request* req);
+        bool isPendingWriteReq(User_Request* req);
+
+        void handleWaitingReqsWhileClustering();
+
+        NVM_Transaction_Flash_WR* getFlushTransaction();
     };
 }
 

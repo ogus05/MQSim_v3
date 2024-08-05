@@ -45,9 +45,11 @@ namespace SSD_Components{
         }
     }
 
-    void SectorMap::checkMergeIsRequired()
+    bool SectorMap::checkMergeIsRequired()
     {
-        if(sectorLog->bitFilter->isClusteringProcessing()) return;
+        if(sectorLog->bitFilter->isClusteringProcessing()){
+            return false;
+        }
         uint32_t mergeBlockCount = 0;
         auto victimBlock = sectorMapBlockList.begin();
 
@@ -86,16 +88,21 @@ namespace SSD_Components{
 
 
             for(auto key : subPagesToRead){
-                sectorLog->bitFilter->removeBit(key);
                 (*victimBlock)->mergingKeyList.push_back(key);
                 Remove(key);
+                sectorLog->bitFilter->removeKey(key);
             }
             if(ppaToRead.size() > 0){
-                sectorLog->sendReadForMerge(std::list<PPA_type>(ppaToRead.begin(), ppaToRead.end()), (*victimBlock)->mergeID);
+                sectorLog->sendTSUReadForMerge(std::list<PPA_type>(ppaToRead.begin(), ppaToRead.end()), (*victimBlock)->mergeID);
                 (*victimBlock)->remainReadCountForMerge = ppaToRead.size();
             } else{
                 Merge((*victimBlock)->mergeID);
             }
+
+            Stats2::addMergeCount();
+            return true;
+        } else{
+            return false;
         }
     }
 

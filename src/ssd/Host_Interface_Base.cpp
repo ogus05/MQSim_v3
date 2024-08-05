@@ -201,6 +201,16 @@ namespace SSD_Components
 		return (uint32_t)(input_streams[stream_id]->STAT_sum_of_write_transactions_waiting_time / input_streams[stream_id]->STAT_number_of_write_transactions / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
 
+    uint32_t Input_Stream_Manager_Base::Get_total_write_transaction_count(stream_id_type stream_id)
+    {
+        return input_streams[stream_id]->STAT_number_of_write_transactions;
+    }
+
+    uint32_t Input_Stream_Manager_Base::Get_total_read_transaction_count(stream_id_type stream_id)
+    {
+        return input_streams[stream_id]->STAT_number_of_read_transactions;
+    }
+
     void Input_Stream_Manager_Base::Clear_Stats()
     {
 		for(auto& e : input_streams){

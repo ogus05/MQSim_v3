@@ -28,6 +28,7 @@ namespace SSD_Components
 	*/
 	class Data_Cache_Manager_Flash_Advanced : public Data_Cache_Manager_Base
 	{
+		friend class SectorLog;
 	public:
 		Data_Cache_Manager_Flash_Advanced(const sim_object_id_type& id, Host_Interface_Base* host_interface, NVM_Firmware* firmware, NVM_PHY_ONFI* flash_controller,
 			unsigned int total_capacity_in_bytes,
@@ -38,8 +39,12 @@ namespace SSD_Components
 		void Execute_simulator_event(MQSimEngine::Sim_Event* ev);
 		void Setup_triggers();
 		void Do_warmup(std::vector<Utils::Workload_Statistics*> workload_stats);
-		void handleWaitingUserRequestsQueue(stream_id_type sharing_id);
-		void AddBackPressureBufferDepth(stream_id_type sharing_id, uint32_t size);
+		void handleWaitingUserRequestsQueue(stream_id_type stream_id);
+		void AddBackPressureBufferDepth(stream_id_type stream_id, uint32_t size);
+		void SubBackPressureBufferDepth(stream_id_type stream_id, uint32_t size);
+
+		void InsertReadPageMappedCache(NVM_Transaction_Flash_RD* transaction);
+
 	private:
 		NVM_PHY_ONFI * flash_controller;
 		unsigned int capacity_in_bytes, capacity_in_pages;

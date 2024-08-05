@@ -316,7 +316,7 @@ int main(int argc, char* argv[])
 		}
 		delete *io_scen;
 
-		Stats2::Clear_Stats2();
+		Stats2::Reset_Stats2();
 
 		time_t end_time = time(0);
 		dt = ctime(&end_time);
@@ -326,7 +326,7 @@ int main(int argc, char* argv[])
 		PRINT_MESSAGE("");
 
 		PRINT_MESSAGE("Writing results to output file .......");
-		collect_results(ssd, host, (workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of(".")) + "_scenario_" + std::to_string(cntr) + ".xml").c_str());
+		collect_results(ssd, host, (Simulator->GetLogFilePath() + "_scenario_" + std::to_string(cntr) + ".xml").c_str());
 	}
 	delete exec_params;
     cout << "Simulation complete; Press any key to exit." << endl;

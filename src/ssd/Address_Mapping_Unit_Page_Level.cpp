@@ -1183,7 +1183,7 @@ namespace SSD_Components
 					NVM::FlashMemory::Physical_Page_Address addr;
 					Convert_ppa_to_address(old_ppa, addr);
 					block_manager->Invalidate_page_in_block(transaction->Stream_id, addr);
-					Stats2::handleReadAndModify(count_sector_no_from_status_bitmap(0));
+					Stats2::addReadAndModify(0);
 				} else {
 					page_status_type read_pages_bitmap = status_intersection ^ prev_page_status;
 					NVM_Transaction_Flash_RD *update_read_tr = new NVM_Transaction_Flash_RD(transaction->Source, transaction->Stream_id,
@@ -1193,7 +1193,7 @@ namespace SSD_Components
 					block_manager->Read_transaction_issued(update_read_tr->Address);//Inform block manager about a new transaction as soon as the transaction's target address is determined
 					block_manager->Invalidate_page_in_block(transaction->Stream_id, update_read_tr->Address);
 					transaction->RelatedRead = update_read_tr;
-					Stats2::handleReadAndModify(count_sector_no_from_status_bitmap(read_pages_bitmap));
+					Stats2::addReadAndModify(count_sector_no_from_status_bitmap(read_pages_bitmap));
 				}
 			}
 		}
@@ -1616,7 +1616,6 @@ namespace SSD_Components
 					}
 				}
 			}
-			Stats2::handleCleaningCache(countCleaningEntries);
 
 			//Read the unchaged mapping entries from flash to merge them with updated parts of MVPN
 			NVM_Transaction_Flash_RD* readTR = NULL;
@@ -1759,7 +1758,6 @@ namespace SSD_Components
 				}
 				_my_instance->domains[transaction->Stream_id]->ArrivingMappingEntries.erase(it++);
 			}
-			Stats2::handleMapping(handledByArrivingMappingEntries, Simulator->Time() - transaction->Issue_time, transaction->PPA);
 			_my_instance->ftl->TSU->Schedule();
 		}
 	}
@@ -1871,7 +1869,6 @@ namespace SSD_Components
 			Stats::Total_flash_reads_for_mapping++;
 			Stats::Total_flash_reads_for_mapping_per_stream[stream_id]++;
 
-			Stats2::handleMappingRelatedToGC(ppn);
 			handle_transaction_serviced_signal_from_PHY(readTR);
 			
 			delete readTR;

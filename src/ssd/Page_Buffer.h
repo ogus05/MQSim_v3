@@ -23,26 +23,25 @@ namespace SSD_Components{
 
         std::unordered_map<key_type, PageBufferEntry*> keyMappingEntry;
 
-        //Indicates free size of the Page Buffer.
+        //Indicates free size of the Page Buffer in subpages.
         const uint32_t maxBufferSize;
-
-        SectorLog* sectorLog;
     public:
-        PageBuffer(const uint32_t maxBufferSizeInSubPages, SectorLog* in_sectorLog); 
+        PageBuffer(const uint32_t maxBufferSizeInSubPages); 
         ~PageBuffer();
         void setClean(const key_type key);
         bool isDirty(const key_type key);
 
         bool Exists(const key_type key, bool used);
-        void insertData(const key_type& key, bool dirty);
+        void insertData(const key_type key, bool dirty);
+        void updateData(const key_type key, bool dirty);
 
         void RemoveByWrite(const key_type key);
-        void RemoveLastEntry();
+        key_type RemoveLastEntry();
 
-        bool hasFreeSpace();
+        uint32_t getFreeSpace();
         bool isLastEntryDirty();
 
-        std::list<key_type> getLastEntries(uint32_t subPagesPerPage);
+        std::list<key_type> evictLastEntries(uint32_t subPagesPerPage);
     };
 }
 

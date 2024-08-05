@@ -64,6 +64,9 @@ namespace SSD_Components
 		uint32_t Get_average_write_transaction_execution_time(stream_id_type stream_id);//in microseconds
 		uint32_t Get_average_write_transaction_transfer_time(stream_id_type stream_id);//in microseconds
 		uint32_t Get_average_write_transaction_waiting_time(stream_id_type stream_id);//in microseconds
+
+		uint32_t Get_total_write_transaction_count(stream_id_type stream_id);
+		uint32_t Get_total_read_transaction_count(stream_id_type stream_id);
 		
 		void Clear_Stats();
 	protected:

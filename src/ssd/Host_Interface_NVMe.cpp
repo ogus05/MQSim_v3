@@ -202,7 +202,6 @@ void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 																				 transaction_size * SECTOR_SIZE_IN_BYTE, lpa, NO_PPA, user_request, user_request->Priority_class, 0, access_status_bitmap, CurrentTimeStamp);
 			user_request->Transaction_list.push_back(transaction);
 			input_streams[user_request->Stream_id]->STAT_number_of_read_transactions++;
-			Stats2::handleExternalTransaction(transaction_size, 0);
 		}
 		else
 		{ //user_request->Type == UserRequestType::WRITE
@@ -210,7 +209,6 @@ void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 																				 transaction_size * SECTOR_SIZE_IN_BYTE, lpa, user_request, user_request->Priority_class, 0, access_status_bitmap, CurrentTimeStamp);
 			user_request->Transaction_list.push_back(transaction);
 			input_streams[user_request->Stream_id]->STAT_number_of_write_transactions++;
-			Stats2::handleExternalTransaction(transaction_size, 1);
 		}
 
 		lsa = lsa + transaction_size;
@@ -471,6 +469,14 @@ void Host_Interface_NVMe::Report_results_in_XML(std::string name_prefix, Utils::
 
 		attr = "Average_Write_Transaction_Waiting_Time";
 		val = std::to_string(input_stream_manager->Get_average_write_transaction_waiting_time(stream_id));
+		xmlwriter.Write_attribute_string(attr, val);
+
+		attr = "Total_Write_Transaction_Count";
+		val = std::to_string(input_stream_manager->Get_total_write_transaction_count(stream_id));
+		xmlwriter.Write_attribute_string(attr, val);
+
+		attr = "Total_Read_Transaction_Count";
+		val = std::to_string(input_stream_manager->Get_total_read_transaction_count(stream_id));
 		xmlwriter.Write_attribute_string(attr, val);
 
 		xmlwriter.Write_close_tag();

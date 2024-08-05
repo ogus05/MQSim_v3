@@ -43,6 +43,7 @@ namespace MQSimEngine {
 
 		sim_time_type loadMileStone;
 		bool loadPhase = false;
+		bool waitingLoadPhaseFinish = false;
 
 		void SetLogFilePath(std::string ssd_config_file_path, std::string workload_defs_file_path);
 
@@ -56,7 +57,6 @@ namespace MQSimEngine {
 		static Engine* _instance;
 
 		std::vector<std::pair<sim_time_type, Sim_Object*>> waitingRunPhaseFlowList;
-		bool waitingLoadPhaseFinish;
 		void Start_RunPhase();
 		
 		std::vector<void(*)()> clearStatsFncList;

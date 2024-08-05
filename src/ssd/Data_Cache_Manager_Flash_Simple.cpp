@@ -90,9 +90,6 @@ namespace SSD_Components
 							} else {
 								it++;
 							}
-							if(!handleAllSectors){
-								Stats2::handleCache(tr->Data_and_metadata_size_in_byte / SECTOR_SIZE_IN_BYTE);
-							}
 						} else {
 							it++;
 						}

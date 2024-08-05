@@ -71,7 +71,7 @@ namespace SSD_Components{
         void eraseVictimBlock(uint32_t mergeID);
 
         void createNewBlock();
-        void checkMergeIsRequired();
+        bool checkMergeIsRequired();
 
     };
 }

@@ -16,6 +16,7 @@
 #include "PCIe_Root_Complex.h"
 #include "SATA_HBA.h"
 #include "../utils/Workload_Statistics.h"
+#include "Stats2.h"
 
 namespace Host_Components
 {
@@ -119,7 +120,11 @@ namespace Host_Components
 		uint32_t Get_device_response_time_short_term();//in microseconds
 		uint32_t Get_end_to_end_request_delay_short_term();//in microseconds
 		sim_time_type STAT_sum_device_response_time_short_term, STAT_sum_request_delay_short_term;
+		sim_time_type STAT_sum_device_response_time_read_short_term;
+		sim_time_type STAT_sum_device_response_time_write_short_term;
 		unsigned int STAT_serviced_request_count_short_term;
+		unsigned int STAT_serviced_read_request_count_short_term;
+		unsigned int STAT_serviced_write_request_count_short_term;
 	};
 }
 

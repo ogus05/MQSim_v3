@@ -24,10 +24,12 @@ namespace SSD_Components
 
 	Data_Cache_Manager_Base::~Data_Cache_Manager_Base() {
 		delete[] caching_mode_per_input_stream;
-		for(auto& e : *sectorLog){
-			delete e;
+		if(sectorLog != NULL){
+			for(auto& e : *sectorLog){
+				delete e;
+			}
+			delete sectorLog;
 		}
-		delete sectorLog;
 	}
 
 	void Data_Cache_Manager_Base::Setup_triggers()

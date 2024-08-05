@@ -9,7 +9,7 @@
 namespace SSD_Components
 {
     SectorLog* SectorLog::instance = NULL;
-    SectorLog::SectorLog(const stream_id_type in_streamID, const uint32_t in_subPagesPerPage, const uint32_t in_pagesPerBlock, const uint32_t in_maxBlockSize, const uint32_t in_maxBufferSize, const uint32_t in_subPageUnit,
+    SectorLog::SectorLog(const stream_id_type in_streamID, const uint32_t in_subPagesPerPage, const uint32_t in_pagesPerBlock, const uint32_t in_maxBlockSize, const uint32_t in_sectorCacheCapacity, const uint32_t in_subPageUnit,
     Address_Mapping_Unit_Page_Level *in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors){
         
         SubPageCalculator::subPageUnit = in_subPageUnit;
@@ -23,14 +23,12 @@ namespace SSD_Components
 
         instance = this;
         sectorMap = new SectorMap(this, maxBlockSize);
-        pageBuffer = new PageBuffer(in_maxBufferSize / (in_subPagesPerPage * in_subPageUnit * SECTOR_SIZE_IN_BYTE), this);
-
+        pageBuffer = new PageBuffer(in_sectorCacheCapacity / (in_subPageUnit * SECTOR_SIZE_IN_BYTE));
         bitFilter = new BitFilter(BF_Milestone, this);
     }
 
     SectorLog::~SectorLog()
     {
-        delete bitFilter;
         delete sectorMap;
         delete pageBuffer;
     }
@@ -49,7 +47,6 @@ namespace SSD_Components
                 if(pageBuffer->Exists(key, true)){
                     availableSectorsBitmap |= SubPageCalculator::keyToSectorsBitmap(key);
                 }
-                bitFilter->addBit(key);
             }
         }
         return availableSectorsBitmap;
@@ -60,35 +57,40 @@ namespace SSD_Components
         for(uint32_t subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
             if(SubPageCalculator::isSectorMapIncludeOffset(sectorsBitmap, subPageOffset)){
                 key_type key = SubPageCalculator::makeKey(lpa, subPageOffset);
-                if(pageBuffer->Exists(key, 0)){
+                if(pageBuffer->Exists(key, false)){
                     pageBuffer->RemoveByWrite(key);
+                    bitFilter->removeKey(key);
                 }
 
                 if(sectorMap->getPageForKey(key)){
                     sectorMap->Remove(key);
+                    bitFilter->removeKey(key);
                 }
 
-                bitFilter->removeBit(key);
             }
         }
     }
 
     bool SectorLog::insertSectorCache(NVM_Transaction_Flash_WR *tr)
     {
-        if(!(bitFilter->isClusteringProcessing() && !pageBuffer->hasFreeSpace())){
-            for(uint32_t subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
-                if(SubPageCalculator::isSectorMapIncludeOffset(tr->write_sectors_bitmap, subPageOffset)){
-                    key_type key = SubPageCalculator::makeKey(tr->LPA, subPageOffset);
+        if(bitFilter->isClusteringProcessing()){
+            return false;
+        }
+        
+        for(uint32_t subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
+            if(SubPageCalculator::isSectorMapIncludeOffset(tr->write_sectors_bitmap, subPageOffset)){
+                key_type key = SubPageCalculator::makeKey(tr->LPA, subPageOffset);
+                if(pageBuffer->Exists(key, 1)){
+                    pageBuffer->updateData(key, 1);
+                } else{
                     pageBuffer->insertData(key, 1);
                 }
             }
-            return true;
-        } else{
-            return false;
         }
+        return true;
     }
 
-    void SectorLog::handleReadTransaction(std::list<NVM_Transaction *> &transactionList)
+    void SectorLog::queryReadTrList(std::list<NVM_Transaction *> &transactionList)
     {
         if(transactionList.front()->Type != Transaction_Type::READ){
             PRINT_ERROR("Handle Read Transaction - its a list of write transactions.")
@@ -104,7 +106,6 @@ namespace SSD_Components
                 lockedTr.at(tr->LPA).push_back(tr);
                 continue;
             }
-
             userTrBuffer.insert({tr, 0});
             for(auto subPageOffset = 0; subPageOffset < subPagesPerPage; subPageOffset++){
                 if(SubPageCalculator::isSectorMapIncludeOffset(tr->read_sectors_bitmap, subPageOffset)){
@@ -121,14 +122,13 @@ namespace SSD_Components
                             newTr->readingSubPages = pageInSectorGroupArea->storedSubPages;
                         }
                         readingSectorGroupAreaList.at(pageInSectorGroupArea->ppa).push_back(tr);
-                        tr->read_sectors_bitmap &= ~SubPageCalculator::keyToSectorsBitmap(key);
-                        tr->Data_and_metadata_size_in_byte -= SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
-                        bitFilter->addBit(key);
+                        bitFilter->addKey(key);
                     } else{
                         auto curTr = transactionListForTransferAMU.find(tr->LPA);
                         if(curTr == transactionListForTransferAMU.end()){
                             curTr = transactionListForTransferAMU.insert({tr->LPA, new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_USER,
-                                streamID, 0, tr->LPA, NO_PPA, NULL, tr->Priority_class, 0, 0, CurrentTimeStamp)}).first;
+                                streamID, 0, tr->LPA, NO_PPA, NULL, tr->Priority_class, tr->Content, 0, tr->DataTimeStamp)}).first;
+                            curTr->second->originTr.clear();
                         }
                         curTr->second->Data_and_metadata_size_in_byte += SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
                         curTr->second->read_sectors_bitmap |= SubPageCalculator::keyToSectorsBitmap(key);
@@ -137,15 +137,15 @@ namespace SSD_Components
                     userTrBuffer.at(tr)++;
                 }
             }
-
         }
+
 
         if(transactionListForTransferTSU.size() > 0){
             if(bitFilter->isClusteringProcessing()){
-                bitFilter->addPendingTrListUntilClustering(transactionListForTransferTSU);
+                pendingReadTrListWhileClustering.push_back(new std::list<NVM_Transaction_Flash*>(transactionListForTransferTSU));
             } else{
                 tsu->Prepare_for_transaction_submit();
-                for(auto& tr: transactionListForTransferTSU){
+                for(auto tr: transactionListForTransferTSU){
                     tsu->Submit_transaction(tr);
                 }
                 tsu->Schedule();
@@ -161,32 +161,64 @@ namespace SSD_Components
         }
     }
 
-    bool SectorLog::checkFlushIsRequired()
+    void SectorLog::addPendingWriteReqListWhileClustering(User_Request *req)
     {
-        if(!bitFilter->isClusteringProcessing()){
-            while(!pageBuffer->hasFreeSpace()){
-                if(pageBuffer->isLastEntryDirty()){
-                    std::list<key_type> subPageList = pageBuffer->getLastEntries(subPagesPerPage);
-                    NVM_Transaction_Flash_WR *sectorGroupAreaWrite = new NVM_Transaction_Flash_WR(Transaction_Source_Type::SECTORLOG_USER,
-                                                                                        streamID, subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE, NO_LPA, NULL, IO_Flow_Priority_Class::URGENT, 0, TO_FULL_PAGE(subPagesPerPage * SubPageCalculator::subPageUnit), CurrentTimeStamp);
-                    sectorMap->allocatePage(subPageList, sectorGroupAreaWrite);
+        pendingWriteReqListWhileClustering.insert(req);
+    }
 
-                    Memory_Transfer_Info* flushTransferInfo = new Memory_Transfer_Info;
-                    flushTransferInfo->Size_in_bytes = subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
-                    flushTransferInfo->Related_request = sectorGroupAreaWrite;
-                    flushTransferInfo->next_event_type = Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_FLUSH_FINISHED;
-                    flushTransferInfo->Stream_id = streamID;
-                    dcm->service_dram_access_request(flushTransferInfo);
-                    return true;
-                } else{
-                    pageBuffer->RemoveLastEntry();
+    bool SectorLog::isPendingWriteReq(User_Request *req)
+    {
+        return (pendingWriteReqListWhileClustering.find(req) != pendingWriteReqListWhileClustering.end());
+    }
+
+    void SectorLog::handleWaitingReqsWhileClustering()
+    {
+        for(auto pendingReadTrList : pendingReadTrListWhileClustering){
+            tsu->Prepare_for_transaction_submit();
+            for(auto tr : (*pendingReadTrList)){
+                tsu->Submit_transaction(tr);
+            }
+            tsu->Schedule();
+            delete pendingReadTrList;
+        }
+        pendingReadTrListWhileClustering.clear();
+        
+
+        for(auto pendingWriteReqItr = pendingWriteReqListWhileClustering.begin(); pendingWriteReqItr != pendingWriteReqListWhileClustering.end();){
+            User_Request* req = (*pendingWriteReqItr);
+            pendingWriteReqListWhileClustering.erase(pendingWriteReqItr++);
+            ((Data_Cache_Manager_Flash_Advanced*)dcm)->process_new_user_request(req);
+        }
+
+        while(sectorMap->checkMergeIsRequired()){}
+    }
+
+    NVM_Transaction_Flash_WR *SectorLog::getFlushTransaction()
+    {
+        std::list<key_type> subPageList = pageBuffer->evictLastEntries(subPagesPerPage);
+        NVM_Transaction_Flash_WR *sectorGroupAreaWrite = new NVM_Transaction_Flash_WR(Transaction_Source_Type::SECTORLOG_USER,
+                                                                            streamID, subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE, NO_LPA, NULL, IO_Flow_Priority_Class::URGENT, 0, TO_FULL_PAGE(subPagesPerPage * SubPageCalculator::subPageUnit), CurrentTimeStamp);
+        sectorMap->allocatePage(subPageList, sectorGroupAreaWrite);
+        return sectorGroupAreaWrite;
+    }
+
+    bool SectorLog::checkFlushIsRequired(uint32_t sizeToWriteInSectors)
+    {
+        while(pageBuffer->getFreeSpace() < (sizeToWriteInSectors / SubPageCalculator::subPageUnit)){
+            if(pageBuffer->isLastEntryDirty()){
+                Stats2::addFlushCount();
+                return true;
+            } else{
+                key_type keyOfLastEntry = pageBuffer->RemoveLastEntry();
+                if(sectorMap->getPageForKey(keyOfLastEntry) == NULL){
+                    bitFilter->removeKey(keyOfLastEntry);
                 }
             }
         }
         return false;
     }
 
-    void SectorLog::sendReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID)
+    void SectorLog::sendTSUReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID)
     {
         tsu->Prepare_for_transaction_submit();
         for (auto &ppa : ppaToRead)
@@ -236,23 +268,16 @@ namespace SSD_Components
         uint32_t totalReadCount = 0;
         for(auto key : subPageList){
             if(pageBuffer->Exists(key, false)){
-                if(pageBuffer->isDirty(key)){
-                    DRAMReadSize += SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
-                } else{
-                    if(sectorMap->getPageForKey(key) == NULL){
-                        bitFilter->removeBit(key);
-                    }
-                }
+                DRAMReadSize += SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
             } else{
                 SectorMapPage* pageInSectorGroupArea = sectorMap->getPageForKey(key);
                 if(pageInSectorGroupArea != NULL){
                     NVM_Transaction_Flash_RD* curTr = NULL;
                     if(trListForTransferTSU.find(pageInSectorGroupArea->ppa) == trListForTransferTSU.end()){
-                        NVM_Transaction_Flash_RD* newTr = new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_CLUSTER,
+                        curTr = new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_CLUSTER,
                                         streamID, 0, NO_LPA, pageInSectorGroupArea->ppa, NULL, IO_Flow_Priority_Class::URGENT, 0, 0, CurrentTimeStamp);
-                        newTr->Address = amu->Convert_ppa_to_address(pageInSectorGroupArea->ppa);
-                        trListForTransferTSU.insert({pageInSectorGroupArea->ppa, newTr});
-                        curTr = newTr;
+                        curTr->Address = amu->Convert_ppa_to_address(pageInSectorGroupArea->ppa);
+                        trListForTransferTSU.insert({pageInSectorGroupArea->ppa, curTr});
                     } else{
                         curTr = trListForTransferTSU.at(pageInSectorGroupArea->ppa);
                     }
@@ -260,68 +285,67 @@ namespace SSD_Components
                     curTr->read_sectors_bitmap = (curTr->read_sectors_bitmap << (page_status_type)SubPageCalculator::subPageUnit) | 
                             ((page_status_type)1 << SubPageCalculator::subPageUnit) - (page_status_type)1;
                 } else{
-                    bitFilter->removeBit(key);
+                    PRINT_ERROR("SEND READ FOR CLUSTERING : THERE ARE NO KEY - " << key)
                 }
             }
         }
 
-        if(totalReadCount >= subPagesPerPage){
-            if(DRAMReadSize > 0){
-                totalReadCount += 1;
-                Memory_Transfer_Info* readTransferInfo = new Memory_Transfer_Info;
-                readTransferInfo->Size_in_bytes = DRAMReadSize;
-                readTransferInfo->next_event_type = Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_CLUSTERING_FINISHED;
-                readTransferInfo->Stream_id = streamID;
-                dcm->service_dram_access_request(readTransferInfo);
-            }
-
-            if(trListForTransferTSU.size() > 0){
-                totalReadCount += trListForTransferTSU.size();
-                tsu->Prepare_for_transaction_submit();
-                for(auto& tr : trListForTransferTSU){
-                    tsu->Submit_transaction(tr.second);
-                }
-                tsu->Schedule();
-            }
-            bitFilter->setRemainRead(totalReadCount);
-        } else{
-            bitFilter->endClustering();
+        if(DRAMReadSize > 0){
+            totalReadCount += 1;
+            Memory_Transfer_Info* readTransferInfo = new Memory_Transfer_Info;
+            readTransferInfo->Size_in_bytes = DRAMReadSize;
+            readTransferInfo->next_event_type = Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_CLUSTERING_FINISHED;
+            readTransferInfo->Stream_id = streamID;
+            dcm->service_dram_access_request(readTransferInfo);
         }
+
+        if(trListForTransferTSU.size() > 0){
+            totalReadCount += trListForTransferTSU.size();
+            tsu->Prepare_for_transaction_submit();
+            for(auto& tr : trListForTransferTSU){
+                tsu->Submit_transaction(tr.second);
+            }
+            tsu->Schedule();
+        }
+
+        bitFilter->setRemainRead(totalReadCount);
     }
 
-    void SectorLog::sendSubPageWriteForClustering(std::list<key_type> &subPageList)
+    void SectorLog::sendSubPageWriteForClustering(std::list<SubPageCluster*>& subPageList)
     {
-        for(key_type key : subPageList){
-            if(pageBuffer->Exists(key, false) && pageBuffer->isDirty(key)){
-                pageBuffer->setClean(key);
-            } else if(sectorMap->getPageForKey(key) != NULL){
-                sectorMap->Remove(key);
-            } else{
-                PRINT_ERROR("ERROR IN SUB PAGE WRITE FOR CLUSTERING : " << key)
-            }
-        }
-        NVM_Transaction_Flash_WR *sectorGroupAreaWrite = new NVM_Transaction_Flash_WR(Transaction_Source_Type::SECTORLOG_CLUSTER,
-                                                                                        streamID, subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE, NO_LPA, NULL, IO_Flow_Priority_Class::URGENT, 0, TO_FULL_PAGE(subPagesPerPage * SubPageCalculator::subPageUnit), CurrentTimeStamp);
-        sectorMap->allocatePage(subPageList, sectorGroupAreaWrite);
         tsu->Prepare_for_transaction_submit();
-        tsu->Submit_transaction(sectorGroupAreaWrite);
+        for(auto subPage : subPageList){
+            for(key_type key : subPage->clusteredSectors){
+                if(pageBuffer->Exists(key, false)){
+                    if(pageBuffer->isDirty(key)){
+                        pageBuffer->setClean(key);
+                    }
+                } else if(sectorMap->getPageForKey(key) != NULL){
+                    sectorMap->Remove(key);
+                } else{
+                    PRINT_ERROR("ERROR IN SUB PAGE WRITE FOR CLUSTERING : " << key)
+                }
+            }
+            NVM_Transaction_Flash_WR *sectorGroupAreaWrite = new NVM_Transaction_Flash_WR(Transaction_Source_Type::SECTORLOG_CLUSTER,
+                                                                                            streamID, subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE, NO_LPA, NULL, IO_Flow_Priority_Class::URGENT, 0, TO_FULL_PAGE(subPagesPerPage * SubPageCalculator::subPageUnit), CurrentTimeStamp);
+            sectorMap->allocatePage(subPage->clusteredSectors, sectorGroupAreaWrite);
+            tsu->Submit_transaction(sectorGroupAreaWrite);
+
+            delete subPage;
+        }
         tsu->Schedule();
     }
-
-
-
 
     void SectorLog::userTrBufferHandler(NVM_Transaction_Flash_RD* originTr)
     {
         auto itr = userTrBuffer.find(originTr);
         if(itr == userTrBuffer.end()){
             PRINT_ERROR("USER TRANSACTION BUFFER HANDLER - NO EXISTS TRANSACTION")
+        } else if(itr->second == 0){
+            PRINT_ERROR("USER TRANSACTION BUFFER HANDLER - ZERO COUNT")
         }
         itr->second--;
         
-        if(itr->second < 0){
-            PRINT_ERROR("USER TRANSACTION BUFFER HANDLER - ERROR IN REMAIN TRANSACTIONS")
-        } 
         if(itr->second == 0){
             userTrBuffer.erase(itr);
             dcmServicedTransactionHandler(originTr);
@@ -344,7 +368,6 @@ namespace SSD_Components
             delete curTr;
         }
         lockedTr.erase(lpaToUnlock);
-
     }
 
     bool SectorLog::checkLPAIsLocked(LPA_type lpa)
@@ -356,15 +379,36 @@ namespace SSD_Components
     void SectorLog::sectorGroupAreaReadHandler(NVM_Transaction_Flash_RD* tr)
     {
         std::list<key_type> subPageList = tr->readingSubPages;
-        for(auto key : subPageList){
-            if(sectorMap->getPageForKey(key) != NULL){
-                pageBuffer->insertData(key, 0);
+        for(auto it = subPageList.begin(); it != subPageList.end(); ){
+            if(sectorMap->getPageForKey((*it)) != NULL){
+                if(pageBuffer->Exists((*it), 1)){
+                    pageBuffer->updateData((*it), 0);
+                } else{
+                    pageBuffer->insertData((*it), 0);
+                }
+                it++;
+            } else{
+                subPageList.erase(it++);
             }
         }
 
-        if(checkFlushIsRequired()){
+        if(checkFlushIsRequired(subPageList.size() * SubPageCalculator::subPageUnit)){
+            std::list<NVM_Transaction_Flash*>* evictedTr = new std::list<NVM_Transaction_Flash*>();
+            evictedTr->push_back(getFlushTransaction());
+            Memory_Transfer_Info* read_transfer_info = new Memory_Transfer_Info;
+			read_transfer_info->Size_in_bytes = subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE;
+			read_transfer_info->Related_request = evictedTr;
+			read_transfer_info->next_event_type = Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_FLUSH_FINISHED;
+			read_transfer_info->Stream_id = streamID;
+			dcm->service_dram_access_request(read_transfer_info);
             ((Data_Cache_Manager_Flash_Advanced*)(dcm))->AddBackPressureBufferDepth(tr->Stream_id, subPagesPerPage * SubPageCalculator::subPageUnit);
         }
+
+        std::set<NVM_Transaction_Flash_RD*> temp;
+        for(auto tr : readingSectorGroupAreaList.at(tr->PPA)){
+            temp.insert(tr);
+        }
+        Stats2::corRead(temp.size());
 
         for(auto originTr : readingSectorGroupAreaList.at(tr->PPA)){
             userTrBufferHandler(originTr);
@@ -381,8 +425,11 @@ namespace SSD_Components
         switch(info->next_event_type){
         case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_FLUSH_FINISHED:{
             tsu->Prepare_for_transaction_submit();
-            tsu->Submit_transaction((NVM_Transaction_Flash*)(info->Related_request));
+            for(auto tr : *(std::list<NVM_Transaction_Flash*>*)(info->Related_request)){
+                tsu->Submit_transaction(tr);
+            }
             tsu->Schedule();
+            delete (std::list<NVM_Transaction_Flash*>*)info->Related_request;
         } break;
         case Data_Cache_Simulation_Event_Type::MEMORY_READ_FOR_SECTORLOG_CLUSTERING_FINISHED:{
             bitFilter->handleClusteringReadIsArrived();
@@ -392,11 +439,9 @@ namespace SSD_Components
     
     void SectorLog::handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash *transaction)
     {
-        if(transaction->Type == Transaction_Type::READ){
-            if (((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite != NULL) {
-                ((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite->RelatedRead = NULL;
-                return;
-            }
+        if(transaction->Type == Transaction_Type::READ && ((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite != NULL){
+            ((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite->RelatedRead = NULL;
+            return;
         }
         if (transaction->Source == Transaction_Source_Type::SECTORLOG_USER)
         {
@@ -405,13 +450,17 @@ namespace SSD_Components
                 if(((NVM_Transaction_Flash_RD*)transaction)->LPA == NO_LPA){
                     instance->sectorGroupAreaReadHandler(((NVM_Transaction_Flash_RD*)transaction));
                 } else{
+                    ((Data_Cache_Manager_Flash_Advanced*)instance->dcm)->InsertReadPageMappedCache((NVM_Transaction_Flash_RD*)transaction);
                     for(auto tr : ((NVM_Transaction_Flash_RD*)transaction)->originTr){
                         instance->userTrBufferHandler(tr);
                     }
                 }
             } break;
+            case Transaction_Type::WRITE:{
+                ((Data_Cache_Manager_Flash_Advanced*)(instance->dcm))->SubBackPressureBufferDepth(transaction->Stream_id, instance->subPagesPerPage * SubPageCalculator::subPageUnit);
+            } break;
 
-            default: PRINT_ERROR("ERROR IN SECTOR LOG HANDLE TRANSACTION : 2"); break;
+            default: PRINT_ERROR("ERROR IN SECTOR LOG HANDLE TRANSACTION : 1"); break;
             }
         }
         else if (transaction->Source == Transaction_Source_Type::SECTORLOG_MERGE) {
@@ -477,7 +526,6 @@ namespace SSD_Components
     }
     bool SubPageCalculator::isSectorMapIncludeOffset(page_status_type sectorsBitmap, uint32_t subPageOffset)
     {
-
-    return ((sectorsBitmap & ((page_status_type)1 << (subPageOffset * subPageUnit))) > 0) ? true : false;
+        return ((sectorsBitmap & ((page_status_type)1 << (subPageOffset * subPageUnit))) > 0) ? true : false;
     }
 }

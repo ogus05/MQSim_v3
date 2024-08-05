@@ -151,13 +151,13 @@ namespace SSD_Components
 						_my_instance->tsu->Submit_transaction(((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite);
 						_my_instance->tsu->Schedule();
 					} else {
-						PRINT_ERROR("Inconsistency found when moving a page for GC/WL!")
+						PRINT_ERROR("Inconsistency found when moving a mapping page for GC/WL!")
 					}
 				} else {
 					_my_instance->address_mapping_unit->Get_data_mapping_info_for_gc(transaction->Stream_id, transaction->LPA, ppa, page_status_bitmap);
 					
 					//There has been no write on the page since GC start, and it is still valid
-					if (ppa == transaction->PPA) {
+					if (_my_instance->address_mapping_unit->Is_ideal_mapping_table() || ppa == transaction->PPA) {
 						_my_instance->tsu->Prepare_for_transaction_submit();
 						((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite->write_sectors_bitmap = page_status_bitmap;
 						((NVM_Transaction_Flash_RD*)transaction)->RelatedWrite->LPA = transaction->LPA;
@@ -187,7 +187,6 @@ namespace SSD_Components
 				}
 				break;
 			case Transaction_Type::ERASE:
-				Stats2::handleGarbageCollection(Simulator->Time() - transaction->Issue_time, pbke->Blocks[transaction->Address.BlockID].Holds_mapping_data);
 				pbke->Ongoing_erase_operations.erase(pbke->Ongoing_erase_operations.find(transaction->Address.BlockID));
 				_my_instance->block_manager->Add_erased_block_to_pool(transaction->Address);
 				_my_instance->block_manager->GC_WL_finished(transaction->Address);

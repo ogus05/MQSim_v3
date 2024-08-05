@@ -18,21 +18,23 @@ namespace SSD_Components{
         return false;
     }
 
-    void PageBuffer::insertData(const key_type& key, bool dirty)
+    void PageBuffer::insertData(const key_type key, bool dirty)
     {
         auto entry = keyMappingEntry.find(key);
-        if(entry == keyMappingEntry.end()){
-            PageBufferEntry* newEntry = new PageBufferEntry(key, dirty);
-            entryList.push_front(newEntry);
-            newEntry->list_itr = entryList.begin();
+        PageBufferEntry* newEntry = new PageBufferEntry(key, dirty);
+        entryList.push_front(newEntry);
+        newEntry->list_itr = entryList.begin();
 
-            keyMappingEntry.insert({key, newEntry});
-        } else{
-            if (entryList.begin() != entry->second->list_itr) {
-                entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
-            }
-            entry->second->dirty |= dirty;
+        keyMappingEntry.insert({key, newEntry});
+    }
+
+    void PageBuffer::updateData(const key_type key, bool dirty)
+    {
+        auto entry = keyMappingEntry.find(key);
+        if (entryList.begin() != entry->second->list_itr) {
+            entryList.splice(entryList.begin(), entryList, entry->second->list_itr);
         }
+        entry->second->dirty |= dirty;
     }
 
     void PageBuffer::RemoveByWrite(const key_type key)
@@ -48,18 +50,21 @@ namespace SSD_Components{
         }
     }
 
-    void PageBuffer::RemoveLastEntry()
+    key_type PageBuffer::RemoveLastEntry()
     {
         PageBufferEntry* lastEntry = entryList.back();
         if(lastEntry->dirty) PRINT_ERROR("LAST ENTRY HAS DIRTY DATA");
 
-        keyMappingEntry.erase(lastEntry->key);
+        key_type key = lastEntry->key;
+        keyMappingEntry.erase(key);
         entryList.erase(lastEntry->list_itr);
         delete lastEntry;
+
+        return key;
     }
 
-    PageBuffer::PageBuffer(const uint32_t maxBufferSizeInSubPages, SectorLog *in_sectorLog) :
-        maxBufferSize(maxBufferSizeInSubPages), sectorLog(in_sectorLog) {}
+    PageBuffer::PageBuffer(const uint32_t maxBufferSizeInSubPages) :
+        maxBufferSize(maxBufferSizeInSubPages) {}
 
     PageBuffer::~PageBuffer()
     {
@@ -89,9 +94,13 @@ namespace SSD_Components{
         }
     }
 
-    bool PageBuffer::hasFreeSpace()
+    uint32_t PageBuffer::getFreeSpace()
     {
-        return entryList.size() < maxBufferSize;
+        if(maxBufferSize < entryList.size()){
+            return 0;
+        } else{
+            return maxBufferSize - entryList.size();
+        }
     }
 
     bool PageBuffer::isLastEntryDirty()
@@ -99,7 +108,7 @@ namespace SSD_Components{
         return entryList.back()->dirty;
     }
 
-    std::list<key_type> PageBuffer::getLastEntries(uint32_t subPagesPerPage)
+    std::list<key_type> PageBuffer::evictLastEntries(uint32_t subPagesPerPage)
     {
         uint32_t remainSubPages = subPagesPerPage;
         std::list<key_type> subPagesToFlush;

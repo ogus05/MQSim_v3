@@ -8,22 +8,25 @@ namespace SSD_Components{
     {
     }
 
-    std::list<SubPageCluster*> BitFilter::makeClusterList()
+    std::list<SubPageCluster*>* BitFilter::makeClusterList()
     {
-        std::list<SubPageCluster*> sectorClusterList;
+        if(processingFilter->size() < sectorLog->subPagesPerPage){
+            return NULL;
+        }
+        std::list<SubPageCluster*>* sectorClusterList = new std::list<SubPageCluster*>();
 
-        SubPageCluster* newSectorCluster = new SubPageCluster();
-        sectorClusterList.push_back(newSectorCluster);
-        uint32_t remainSizeInSubPages = sectorLog->subPagesPerPage;
 
-        for(auto key : filter){
-            newSectorCluster->clusteredSectors.push_back(key);
-            remainSizeInSubPages--;
+        SubPageCluster* newSectorCluster;
+        uint32_t remainSizeInSubPages = 0;
+
+        for(auto key : (*processingFilter)){
             if(remainSizeInSubPages == 0){
                 newSectorCluster = new SubPageCluster();
-                sectorClusterList.push_back(newSectorCluster);
+                sectorClusterList->push_back(newSectorCluster);
                 remainSizeInSubPages = sectorLog->subPagesPerPage;
             }
+            newSectorCluster->clusteredSectors.push_back(key);
+            remainSizeInSubPages--;
         }
 
         return sectorClusterList;
@@ -32,16 +35,18 @@ namespace SSD_Components{
     BitFilter* BitFilter::instance = NULL;
     BitFilter::BitFilter(sim_time_type T_executeThreshold, SectorLog* sectorLog)
     {
-        instance = this;
-        this->sectorLog = sectorLog;
-        isClustering = false;
         this->T_executeThreshold = T_executeThreshold;
-        this->T_lastRead = 0;
-
-        remainReadForClustering = 0;
-        remainWriteForClustering = 0;
-
+        processingFilter = NULL;
         if(T_executeThreshold != 0){
+            instance = this;
+            this->sectorLog = sectorLog;
+            this->T_lastRead = 0;
+
+            remainReadForClustering = 0;
+            remainWriteForClustering = 0;
+
+            filter = new std::set<key_type>();
+
             Simulator->AttachPerodicalFnc(polling);
             Simulator->AttachClearStats(reset);
         }
@@ -49,38 +54,52 @@ namespace SSD_Components{
 
     BitFilter::~BitFilter()
     {
+        delete filter;
+        if(isClusteringProcessing()){
+            delete processingFilter;
+        }
     }
 
     bool BitFilter::isClusteringProcessing()
     {
-        return isClustering;
+        return (processingFilter != NULL);
     }
 
-    void BitFilter::addBit(const key_type key)
+    void BitFilter::addKey(const key_type key)
     {
-        filter.insert(key);
-        T_lastRead = CurrentTimeStamp;
+        if(T_executeThreshold != 0){
+            filter->insert(key);
+            T_lastRead = CurrentTimeStamp;
+        }
     }
 
-    void BitFilter::removeBit(const key_type key)
+    void BitFilter::removeKey(const key_type key)
     {
-        if(filter.find(key) != filter.end()){
-            filter.erase(key);
+        if(T_executeThreshold != 0){
+            filter->erase(key);
+            if(instance->isClusteringProcessing()){
+                processingFilter->erase(key);
+            }
         }
     }
 
     void BitFilter::reset()
     {
-        instance->filter.clear();
+        instance->filter->clear();
+        if(instance->isClusteringProcessing()){
+            instance->processingFilter->clear();
+        }
         instance->T_lastRead = CurrentTimeStamp;
     }
 
     void BitFilter::polling()
     {
-        if(!instance->isClustering){
-            if(((CurrentTimeStamp - instance->T_lastRead) > instance->T_executeThreshold) && (instance->filter.size() >= instance->sectorLog->subPagesPerPage)){
-                instance->isClustering = true;
-                std::list<key_type> subPagesToRead = std::list<key_type>(instance->filter.begin(), instance->filter.end());
+        if(!instance->isClusteringProcessing()){
+            if(((CurrentTimeStamp - instance->T_lastRead) > instance->T_executeThreshold) && (instance->filter->size() >= instance->sectorLog->subPagesPerPage)){
+                std::list<key_type> subPagesToRead = std::list<key_type>(instance->filter->begin(), instance->filter->end());
+                Stats2::addClusteringCount();
+                instance->processingFilter = instance->filter;
+                instance->filter = new std::set<key_type>();
                 instance->sectorLog->sendReadForClustering(subPagesToRead);
             }
         }
@@ -109,29 +128,24 @@ namespace SSD_Components{
 
     void BitFilter::startClustering()
     {
-        std::list<SubPageCluster*> subPageClusterList = makeClusterList();
+        std::list<SubPageCluster*>* subPageClusterList = makeClusterList();
 
-        remainWriteForClustering = subPageClusterList.size();
-        for(SubPageCluster* subPageCluster : subPageClusterList){
-            sectorLog->sendSubPageWriteForClustering(subPageCluster->clusteredSectors);
+        if(subPageClusterList == NULL){
+            endClustering();
+        } else{
+            remainWriteForClustering = subPageClusterList->size();
+            sectorLog->sendSubPageWriteForClustering(*subPageClusterList);
+            delete subPageClusterList;
         }
+
     }
 
     void BitFilter::endClustering()
     {
-        isClustering = false;
         T_lastRead = CurrentTimeStamp;
-        filter.clear();
-        ((Data_Cache_Manager_Flash_Advanced*)sectorLog->dcm)->handleWaitingUserRequestsQueue(sectorLog->streamID);
-        for(std::list<NVM_Transaction_Flash*>* trList : pendingTrList){
-            sectorLog->handleReadTransaction((*(std::list<NVM_Transaction*>*)trList));
-            delete trList;
-        }
-        sectorLog->sectorMap->checkMergeIsRequired();
-        pendingTrList.clear();
-    }
-    void BitFilter::addPendingTrListUntilClustering(std::list<NVM_Transaction_Flash *>& transaction_list)
-    {
-        pendingTrList.push_back(new std::list<NVM_Transaction_Flash*>(transaction_list));
+        delete processingFilter;
+        processingFilter = NULL;
+        
+        sectorLog->handleWaitingReqsWhileClustering();
     }
 }

@@ -525,12 +525,24 @@ bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_C
         {
             sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
         }
-        else if (MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-			sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
-		}
         else
         {
             sourceQueue2 = get_next_read_service_queue(chip);
+            if(sourceQueue2 == NULL)
+            {
+                if(ClusterReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &ClusterReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if (MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
         }
     }
     else if (ftl->GC_and_WL_Unit->GC_is_in_urgent_mode(chip))
@@ -539,76 +551,127 @@ bool TSU_Priority_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_C
         if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            if (MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-            {
-                sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
-            }
-            else
-            {
-                sourceQueue2 = get_next_read_service_queue(chip);
-            }
-        }
-        else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-        {
-            return false;
-        }
-        else if (GCEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-        {
-            return false;
-        }
-        else if (MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			sourceQueue1 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
             sourceQueue2 = get_next_read_service_queue(chip);
-		}
-        else if (MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0 || MergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-		{
-			return false;
-		}
+
+            if(sourceQueue2 == NULL){
+                if(ClusterReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &ClusterReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if (MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
+        }
+        else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0 || 
+            GCEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+        {
+            return false;
+        }
         else
         {
             sourceQueue1 = get_next_read_service_queue(chip);
-            if (sourceQueue1 == NULL)
+            if(sourceQueue1 != NULL)
             {
-                return false;
+                if(ClusterReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &ClusterReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
+            else
+            {
+                if(get_next_write_service_queue(chip) != NULL)
+                {
+                    return false;
+                }
+                else if(ClusterReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &ClusterReadTRQueue[chip->ChannelID][chip->ChipID];
+                    if(MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                }
+                else if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    return false;
+                }
+                else if(MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else
+                {
+                    return false;
+                }
             }
         }
     }
-    else if(MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-	{
-		sourceQueue1 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
-        sourceQueue2 = get_next_read_service_queue(chip);
-        if(sourceQueue2 == NULL){
-            if(GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-			    sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            }
-        }
-	}
-    else if (MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0 || MergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-		return false;
-	}
     else
     {
         //If GC is currently executed in the preemptive mode, then user IO transaction queues are checked first
         sourceQueue1 = get_next_read_service_queue(chip);
         if (sourceQueue1 != NULL)
         {
-            if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            if (ClusterReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue2 = &ClusterReadTRQueue[chip->ChannelID][chip->ChipID];
+            }
+            else if (MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+            }
+            else if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
             {
                 sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
             }
         }
-        else if (get_next_write_service_queue(chip) != NULL)
-        {
-            return false;
-        }
-        else if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-        {
-            sourceQueue1 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-        }
         else
         {
-            return false;
+            if (get_next_write_service_queue(chip) != NULL)
+            {
+                return false;
+            }
+            else{
+                if(ClusterReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &ClusterReadTRQueue[chip->ChannelID][chip->ChipID];
+                    if(MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                    else if(GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                }
+                else if(MergeReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &MergeReadTRQueue[chip->ChannelID][chip->ChipID];
+                    if(GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                }
+                else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0 ||
+                    MergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    return false;
+                }
+                else if(GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else
+                {
+                    return false;
+                }
+            }
         }
     }
 
@@ -691,14 +754,20 @@ bool TSU_Priority_OutOfOrder::service_write_transaction(NVM::FlashMemory::Flash_
         if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
-            if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-                sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
-            } else{
-                sourceQueue2 = get_next_write_service_queue(chip);
-                if(sourceQueue2 == NULL){
-                    if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-                        sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
-                    }
+            sourceQueue2 = get_next_write_service_queue(chip);
+            if(sourceQueue2 == NULL)
+            {
+                if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
                 }
             }
         }
@@ -706,76 +775,129 @@ bool TSU_Priority_OutOfOrder::service_write_transaction(NVM::FlashMemory::Flash_
         {
             return false;
         }
-        else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-            sourceQueue1 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
-            sourceQueue2 = get_next_write_service_queue(chip);
-            if(sourceQueue2 == NULL){
-                sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
-            }
-        }
-        else if (MergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-            return false;
-        }
         else
         {
             sourceQueue1 = get_next_write_service_queue(chip);
-            if(sourceQueue1 == NULL)
+            if(sourceQueue1 != NULL)
             {
-                if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
+                if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
+            else
+            {
+                if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
                     sourceQueue1 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
-                } else{
+                    if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                    else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                }
+                else if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+                    if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                    {
+                        sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                    }
+                }
+                else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue1 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else
+                {
                     return false;
                 }
-            } else if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-                sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
             }
         }
     }
-    else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-		sourceQueue1 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
-        sourceQueue2 = get_next_write_service_queue(chip);
-        if(sourceQueue2 == NULL){
-            if (MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+    else
+    {
+        sourceQueue1 = get_next_write_service_queue(chip);
+        if(sourceQueue1 != NULL)
+        {
+            if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
             {
                 sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
+            }
+            else if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue2 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+            }
+            else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
             }
             else if(GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
             {
                 sourceQueue2 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
             }
         }
-    }
-    else if (MergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-	{
-		return false;
-	}
-    else
-    {
-        //If GC is currently executed in the preemptive mode, then user IO transaction queues are checked first
-        sourceQueue1 = get_next_write_service_queue(chip);
-        if (sourceQueue1 != NULL)
-        {
-            if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-                sourceQueue2 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
-            }
-            else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-            {
-                sourceQueue2 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
-            }
-        }
-        else if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-            sourceQueue1 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
-            if(GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0){
-                sourceQueue2 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
-            }
-        }
-        else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-        {
-            sourceQueue1 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
-        }
         else
         {
-            return false;
+            if(MappingWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue1 = &MappingWriteTRQueue[chip->ChannelID][chip->ChipID];
+                if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
+            else if(ClusterWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue1 = &ClusterWriteTRQueue[chip->ChannelID][chip->ChipID];
+                if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+                else if(GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
+            else if(MergeWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue1 = &MergeWriteTRQueue[chip->ChannelID][chip->ChipID];
+                if(GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+                {
+                    sourceQueue2 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
+                }
+            }
+            else if(MergeEraseTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                return false;
+            }
+            else if(GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue1 = &GCWriteTRQueue[chip->ChannelID][chip->ChipID];
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 

@@ -144,7 +144,11 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 		}
 		log_file << "SimulationTime(us)\t" << "ReponseTime(us)\t" << "EndToEndDelay(us)"<< std::endl;
 		STAT_sum_device_response_time_short_term = 0;
+		STAT_sum_device_response_time_read_short_term = 0;
+		STAT_sum_device_response_time_write_short_term = 0;
 		STAT_serviced_request_count_short_term = 0;
+		STAT_serviced_read_request_count_short_term = 0;
+		STAT_serviced_write_request_count_short_term = 0;
 	}
 
 	void IO_Flow_Base::SATA_consume_io_request(Host_IO_Request* request)
@@ -190,6 +194,9 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			}
 			STAT_transferred_bytes_read += request->LBA_count * SECTOR_SIZE_IN_BYTE;
 		} else {
+			STAT_serviced_write_request_count_short_term++;
+			STAT_sum_device_response_time_write_short_term += device_response_time;
+
 			STAT_serviced_write_request_count++;
 			STAT_sum_device_response_time_write += device_response_time;
 			STAT_sum_request_delay_write += request_delay;
@@ -274,6 +281,9 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 		STAT_transferred_bytes_total += request->LBA_count * SECTOR_SIZE_IN_BYTE;
 		
 		if (request->Type == Host_IO_Request_Type::READ) {
+			STAT_serviced_read_request_count_short_term++;
+			STAT_sum_device_response_time_read_short_term += device_response_time;
+
 			STAT_serviced_read_request_count++;
 			STAT_sum_device_response_time_read += device_response_time;
 			STAT_sum_request_delay_read += request_delay;
@@ -291,6 +301,8 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			}
 			STAT_transferred_bytes_read += request->LBA_count * SECTOR_SIZE_IN_BYTE;
 		} else {
+			STAT_serviced_write_request_count_short_term++;
+			STAT_sum_device_response_time_write_short_term += device_response_time;
 			STAT_serviced_write_request_count++;
 			STAT_sum_device_response_time_write += device_response_time;
 			STAT_sum_request_delay_write += request_delay;
@@ -364,13 +376,26 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			next_progress_step += 5;
 		}
 
-		if (Simulator->Time() > next_logging_milestone) {
-			log_file << Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF << "\t" << Get_device_response_time_short_term() << "\t" << Get_end_to_end_request_delay_short_term() << std::endl;
-			STAT_sum_device_response_time_short_term = 0;
-			STAT_sum_request_delay_short_term = 0;
-			STAT_serviced_request_count_short_term = 0;
-			next_logging_milestone = Simulator->Time() + logging_period;
+		if(STAT_serviced_request_count_short_term == (total_requests_to_be_generated / 10000)){
+			if(Stats2::addShortTermLogging(STAT_sum_device_response_time_read_short_term, STAT_sum_device_response_time_write_short_term, STAT_sum_device_response_time_short_term,
+				STAT_serviced_read_request_count_short_term, STAT_serviced_write_request_count_short_term, STAT_serviced_request_count_short_term)){
+				STAT_sum_device_response_time_short_term = 0;
+				STAT_sum_device_response_time_read_short_term = 0;
+				STAT_sum_device_response_time_write_short_term = 0;
+				STAT_serviced_request_count_short_term = 0;
+				STAT_serviced_read_request_count_short_term = 0;
+				STAT_serviced_write_request_count_short_term = 0;
+			}
 		}
+
+
+		// if (Simulator->Time() > next_logging_milestone) {
+		// 	log_file << Simulator->Time() / SIM_TIME_TO_MICROSECONDS_COEFF << "\t" << Get_device_response_time_short_term() << "\t" << Get_end_to_end_request_delay_short_term() << std::endl;
+		// 	STAT_sum_device_response_time_short_term = 0;
+		// 	STAT_sum_request_delay_short_term = 0;
+		// 	STAT_serviced_request_count_short_term = 0;
+		// 	next_logging_milestone = Simulator->Time() + logging_period;
+		// }
 	}
 	
 	Submission_Queue_Entry* IO_Flow_Base::NVMe_read_sqe(uint64_t address)
@@ -649,5 +674,14 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 		STAT_max_request_delay = 0;
 		STAT_sum_device_response_time_read = 0;
 		STAT_sum_device_response_time_write = 0;
+
+		STAT_sum_request_delay_short_term = 0;
+		STAT_sum_device_response_time_short_term = 0;
+		STAT_sum_device_response_time_read_short_term = 0;
+		STAT_sum_device_response_time_write_short_term = 0;
+		STAT_serviced_request_count_short_term = 0;
+		STAT_serviced_read_request_count_short_term = 0;
+		STAT_serviced_write_request_count_short_term = 0;
+		next_logging_milestone = CurrentTimeStamp + logging_period;
     }
 }

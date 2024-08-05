@@ -4,3 +4,4 @@ build/
 Stats2
 traces
 module/
+**/*.xml
