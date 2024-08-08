@@ -4,33 +4,17 @@
 #include "Sector_Log.h"
 
 namespace SSD_Components{
-    
-    class SectorMapPage;
-    class SectorMapBlock{
+
+    class MergingEntry{
     private:
     public:
-        NVM::FlashMemory::Physical_Page_Address* blockAddr;
-        PlaneBookKeepingType* planeRecord;
-        Block_Pool_Slot_Type* blockRecord;
-        uint64_t remainReadCountForMerge;
-
-        std::list<SectorMapPage*> pageList;
-
-        bool ongoingMerge;
-
-        uint32_t mergeID;
-
-        std::list<key_type> mergingKeyList;
-
-        void setTrAddr(NVM_Transaction_Flash_WR* tr);
-
-        SectorMapBlock(NVM::FlashMemory::Physical_Page_Address* in_blockAddr, PlaneBookKeepingType* in_planeRecord,
-            Block_Pool_Slot_Type* in_blockRecord);
-
-        ~SectorMapBlock();
-        
+        PPA_type blockAddr;
+        std::list<key_type>* mergingKeyList;
+        uint64_t remainReadCount;
+        uint64_t remainWriteCount;
+        MergingEntry(PPA_type in_blockAddr, std::list<key_type>* in_mergingKeyList);
     };
-
+    
     class SectorMapPage{
     private:
     public:
@@ -39,11 +23,9 @@ namespace SSD_Components{
 
         std::list<SectorMapPage*>::iterator list_itr;
 
-        SectorMapBlock* block;
-
         std::list<key_type> storedSubPages;
 
-        SectorMapPage(const PPA_type& in_ppa, SectorMapBlock* in_block);
+        SectorMapPage(const PPA_type& in_ppa);
     };
 
     class SectorMap{
@@ -51,13 +33,17 @@ namespace SSD_Components{
         SectorLog* sectorLog;
         std::unordered_map<key_type, SectorMapPage*> mapTable;
 
-        std::list<SectorMapBlock*> sectorMapBlockList;
+        std::unordered_map<PPA_type, std::list<SectorMapPage*>*> physicalBlockTable;
 
+        std::unordered_map<PPA_type, MergingEntry*> mergingEntryList;
         uint32_t maxBlockSize;
 
         void setMapTable(std::list<key_type>& subPagesList, SectorMapPage* mapEntry);
-    
-        void Merge(uint32_t mergeID);
+        void addPhysicalBlockTable(SectorMapPage* pageEntry);
+        PPA_type getMergeBlock(std::vector<PPA_type>& sectorLogBlockList);
+        void Merge(PPA_type blockAddr);
+
+        void erasePhysicalBlockTableEntry(SectorMapPage* pageEntry);
 
     public:
         SectorMap(SectorLog* in_sectorLog, uint32_t in_maxBlockSize)
@@ -67,10 +53,9 @@ namespace SSD_Components{
         void allocatePage(std::list<key_type>& subPagesList, NVM_Transaction_Flash_WR *transaction);
         void Remove(key_type key);
 
-        void handleMergeReadArrived(uint32_t mergeID);
-        void eraseVictimBlock(uint32_t mergeID);
+        void handleMergeReadArrived(PPA_type blockAddr);
+        void eraseVictimBlock(PPA_type blockAddr);
 
-        void createNewBlock();
         bool checkMergeIsRequired();
 
     };

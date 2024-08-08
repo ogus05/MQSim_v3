@@ -24,7 +24,9 @@ namespace SSD_Components
 		void Add_erased_block_to_pool(const NVM::FlashMemory::Physical_Page_Address& address);
 		unsigned int Get_pool_size(const NVM::FlashMemory::Physical_Page_Address& plane_address);
 		
-		void Allocate_page_in_block_for_sectorLog_write(const stream_id_type stream_id, NVM::FlashMemory::Physical_Page_Address& block_address);
+		void Allocate_page_for_sectorLog(const stream_id_type stream_id, NVM::FlashMemory::Physical_Page_Address& block_address);
+		bool isBlockFull(const NVM::FlashMemory::Physical_Page_Address& blockAddr);
+
 	private:
 	};
 }

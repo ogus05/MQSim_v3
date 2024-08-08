@@ -1,7 +1,7 @@
 #ifndef SECTOR_LOG_H
 #define SECTOR_LOG_H
 
-#include "Flash_Block_Manager_Base.h"
+#include "Flash_Block_Manager.h"
 #include "Address_Mapping_Unit_Page_Level.h"
 #include "TSU_Base.h"
 #include "BitFilter/BitFilter.h"
@@ -60,12 +60,12 @@ namespace SSD_Components{
 
         void sendAMUWriteForMerge(std::list<key_type>& subPageList, NVM_Transaction_Flash_ER* eraseTr);
         void sendSubPageWriteForClustering(std::list<SubPageCluster*>& subPageList);
-        void sendTSUReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID);
+        void sendTSUReadForMerge(std::list<PPA_type> ppaToRead);
         void sendReadForClustering(std::list<key_type>& subPageList);
 
         void userTrBufferHandler(NVM_Transaction_Flash_RD* originTr);
 
-        void lockLPA(std::list<LPA_type>& lpaToLock);
+        void lockLPA(const LPA_type lpaToLock);
         void unlockLPA(LPA_type lpaToUnlock);
         bool checkLPAIsLocked(LPA_type lpa);
 

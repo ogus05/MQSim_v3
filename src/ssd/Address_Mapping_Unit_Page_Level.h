@@ -132,7 +132,6 @@ namespace SSD_Components
 	class Address_Mapping_Unit_Page_Level : public Address_Mapping_Unit_Base
 	{
 		friend class GC_and_WL_Unit_Page_Level;
-		friend class SectorLog;
 	public:
 		Address_Mapping_Unit_Page_Level(const sim_object_id_type& id, FTL* ftl, NVM_PHY_ONFI* flash_controller, Flash_Block_Manager_Base* block_manager,
 			bool ideal_mapping_table, unsigned int cmt_capacity_in_byte, Flash_Plane_Allocation_Scheme_Type PlaneAllocationScheme,
@@ -170,13 +169,16 @@ namespace SSD_Components
 		void Remove_barrier_for_accessing_mvpn(stream_id_type stream_id, MVPN_type mpvn);
 		void Start_servicing_writes_for_overfull_plane(const NVM::FlashMemory::Physical_Page_Address plane_address);
 
-		PlaneBookKeepingType* getColdPlane(const stream_id_type& stream_id, NVM::FlashMemory::Physical_Page_Address* blockAddr);
-		void erase_block_from_sectorLog(NVM::FlashMemory::Physical_Page_Address& block_addr);
+		void allocateNewFreeBlockForSectorLog(const stream_id_type& stream_id);
+		void erase_block_from_sectorLog(PPA_type block_addr);
+		void allocateAddrForSectorLogWrite(NVM_Transaction_Flash_WR* tr);
+		std::vector<PPA_type>& getSectorLogBlockList(const stream_id_type stream_id);
 	private:
 		static Address_Mapping_Unit_Page_Level* _my_instance;
 		unsigned int cmt_capacity;
 		AddressMappingDomain** domains;
 		unsigned int CMT_entry_size, GTD_entry_size;//In CMT MQSim stores (lpn, ppn, page status bits) but in GTD it only stores (ppn, page status bits)
+		std::vector<std::vector<PPA_type>>* sectorLogBlockList;
 		void allocate_plane_for_user_write(NVM_Transaction_Flash_WR* transaction);
 		void allocate_page_in_plane_for_user_write(NVM_Transaction_Flash_WR* transaction, bool is_for_gc);
 		void allocate_plane_for_translation_write(NVM_Transaction_Flash* transaction);

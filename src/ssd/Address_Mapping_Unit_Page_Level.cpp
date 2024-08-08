@@ -305,6 +305,8 @@ namespace SSD_Components
 		_my_instance = this;
 		domains = new AddressMappingDomain*[no_of_input_streams];
 
+		sectorLogBlockList = new std::vector<std::vector<PPA_type>>(no_of_input_streams);
+
 		Write_transactions_for_overfull_planes = new std::set<NVM_Transaction_Flash_WR*>***[channel_count];
 		for (unsigned int channel_id = 0; channel_id < channel_count; channel_id++) {
 			Write_transactions_for_overfull_planes[channel_id] = new std::set<NVM_Transaction_Flash_WR*>**[chip_no_per_channel];
@@ -400,6 +402,8 @@ namespace SSD_Components
 			delete domains[i];
 		}
 		delete[] domains;
+		delete sectorLogBlockList;
+
 		for (unsigned int channel_id = 0; channel_id < channel_count; channel_id++) {
 			for (unsigned int chip_id = 0; chip_id < chip_no_per_channel; chip_id++) {
 				for (unsigned int die_id = 0; die_id < die_no_per_chip; die_id++) {
@@ -1958,31 +1962,62 @@ namespace SSD_Components
 		ftl->TSU->Schedule();
 	}
 
-    PlaneBookKeepingType* Address_Mapping_Unit_Page_Level::getColdPlane(const stream_id_type &stream_id, NVM::FlashMemory::Physical_Page_Address* blockAddr)
+    void Address_Mapping_Unit_Page_Level::allocateNewFreeBlockForSectorLog(const stream_id_type &stream_id)
     {
-		uint32_t curPlaneFreeBlockCount = 0;
-		PlaneBookKeepingType* planeRecord = NULL;
+		PlaneBookKeepingType* coldestPlaneRecord = &block_manager->plane_manager[0][0][0][0];
+		NVM::FlashMemory::Physical_Page_Address coldestPlaneAddr;
 		for(uint32_t channelID = 0; channelID < channel_count; channelID++){
 			for(uint32_t chipID = 0; chipID < chip_no_per_channel; chipID++){
 				for(uint32_t dieID = 0; dieID < die_no_per_chip; dieID++){
 					for(uint32_t planeID = 0; planeID < plane_no_per_die; planeID++){
-						planeRecord = &block_manager->plane_manager[channelID][chipID][dieID][planeID];
-						if(planeRecord->Get_free_block_pool_size() > curPlaneFreeBlockCount){
-							blockAddr->ChannelID = channelID;
-							blockAddr->ChipID = chipID;
-							blockAddr->DieID = dieID;
-							blockAddr->PlaneID = planeID;
-							curPlaneFreeBlockCount = planeRecord->Get_free_block_pool_size();
+						PlaneBookKeepingType* curPlaneRecord = &block_manager->plane_manager[channelID][chipID][dieID][planeID];
+						if(curPlaneRecord->Get_free_block_pool_size() > coldestPlaneRecord->Get_free_block_pool_size()){
+							coldestPlaneRecord = curPlaneRecord;
+							coldestPlaneAddr.ChannelID = channelID;
+							coldestPlaneAddr.ChipID = chipID;
+							coldestPlaneAddr.DieID = dieID;
+							coldestPlaneAddr.PlaneID = planeID;
 						}
 					}
 				}
 			}
 		}
-		return &block_manager->plane_manager[blockAddr->ChannelID][blockAddr->ChipID][blockAddr->DieID][blockAddr->PlaneID];
+		Block_Pool_Slot_Type* freeBlock = coldestPlaneRecord->Get_a_free_block(stream_id, false);
+		freeBlock->Holds_sector_data = true;
+		coldestPlaneAddr.BlockID = freeBlock->BlockID;
+
+		sectorLogBlockList->at(stream_id).push_back(Convert_address_to_ppa(coldestPlaneAddr));
+
+		block_manager->gc_and_wl_unit->Check_gc_required(coldestPlaneRecord->Get_free_block_pool_size(), coldestPlaneAddr);
     }
  
-    void Address_Mapping_Unit_Page_Level::erase_block_from_sectorLog(NVM::FlashMemory::Physical_Page_Address &block_addr)
+    void Address_Mapping_Unit_Page_Level::erase_block_from_sectorLog(PPA_type blockAddr)
     {
-		block_manager->Add_erased_block_to_pool(block_addr);
+		NVM::FlashMemory::Physical_Page_Address addr = Convert_ppa_to_address(blockAddr);
+		PlaneBookKeepingType* planeRecord = &block_manager->plane_manager[addr.ChannelID][addr.ChipID][addr.DieID][addr.PlaneID];
+		Block_Pool_Slot_Type* blockRecord = &planeRecord->Blocks[addr.BlockID];
+		blockRecord->Invalid_page_count += blockRecord->Current_page_write_index;
+		block_manager->Add_erased_block_to_pool(addr);
     }
+	
+    void Address_Mapping_Unit_Page_Level::allocateAddrForSectorLogWrite(NVM_Transaction_Flash_WR* tr)
+    {
+		if(sectorLogBlockList->at(tr->Stream_id).empty()){
+			allocateNewFreeBlockForSectorLog(tr->Stream_id);
+		}
+		tr->PPA = sectorLogBlockList->at(tr->Stream_id).back();
+		tr->Address = Convert_ppa_to_address(tr->PPA);
+		block_manager->Allocate_page_for_sectorLog(tr->Stream_id, tr->Address);
+
+		if(block_manager->isBlockFull(tr->Address)){
+			allocateNewFreeBlockForSectorLog(tr->Stream_id);
+		}
+
+		tr->PPA = Convert_address_to_ppa(tr->Address);
+
+    }
+    std::vector<PPA_type>& Address_Mapping_Unit_Page_Level::getSectorLogBlockList(const stream_id_type stream_id)
+    {
+        return sectorLogBlockList->at(stream_id);
+	}
 }

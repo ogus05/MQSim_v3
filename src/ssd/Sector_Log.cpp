@@ -218,14 +218,13 @@ namespace SSD_Components
         return false;
     }
 
-    void SectorLog::sendTSUReadForMerge(std::list<PPA_type> ppaToRead, uint32_t mergeID)
+    void SectorLog::sendTSUReadForMerge(std::list<PPA_type> ppaToRead)
     {
         tsu->Prepare_for_transaction_submit();
         for (auto &ppa : ppaToRead)
         {
             NVM_Transaction_Flash_RD *readSectorAreaTr = new NVM_Transaction_Flash_RD(Transaction_Source_Type::SECTORLOG_MERGE, streamID,
                                                                                     subPagesPerPage * SubPageCalculator::subPageUnit * SECTOR_SIZE_IN_BYTE, NO_LPA, ppa, NULL, 0, TO_FULL_PAGE(subPagesPerPage * SubPageCalculator::subPageUnit), CurrentTimeStamp);
-            readSectorAreaTr->mergeID = mergeID;
             readSectorAreaTr->Address = amu->Convert_ppa_to_address(ppa);
             tsu->Submit_transaction(readSectorAreaTr);
         }
@@ -353,11 +352,9 @@ namespace SSD_Components
         }
     }
 
-    void SectorLog::lockLPA(std::list<LPA_type>& lpaToLock)
+    void SectorLog::lockLPA(const LPA_type lpaToLock)
     {
-        for(auto lpa : lpaToLock){
-            lockedTr.insert({lpa, std::list<NVM_Transaction_Flash*>()});
-        }
+        lockedTr.insert({lpaToLock, std::list<NVM_Transaction_Flash*>()});
     }
 
     void SectorLog::unlockLPA(LPA_type lpaToUnlock)
@@ -466,7 +463,7 @@ namespace SSD_Components
         else if (transaction->Source == Transaction_Source_Type::SECTORLOG_MERGE) {
             switch (transaction->Type) {
                 //Read data related to the victim block before the merge process is started.
-                case Transaction_Type::READ: instance->sectorMap->handleMergeReadArrived(((NVM_Transaction_Flash_RD*)transaction)->mergeID); break;
+                case Transaction_Type::READ: instance->sectorMap->handleMergeReadArrived(transaction->PPA); break;
 
                 //Write the related blocks.
                 case Transaction_Type::WRITE: {
@@ -481,7 +478,7 @@ namespace SSD_Components
                 break;
                 
                 //Merge process is completed.
-                case Transaction_Type::ERASE: instance->sectorMap->eraseVictimBlock(transaction->mergeID); break;
+                case Transaction_Type::ERASE: instance->sectorMap->eraseVictimBlock(transaction->PPA); break;
                 default:
                 {
                     PRINT_ERROR("ERROR IN SECTOR LOG HANDLE TRANSACTION : 2");

@@ -56,7 +56,7 @@
 		<SL_Max_Block_Count>8192</SL_Max_Block_Count>
 		<SL_Max_Buffer_Size>67108864</SL_Max_Buffer_Size>
 		<SL_Sub_Page_Capacity>4096</SL_Sub_Page_Unit>
-        <BF_Milestone>4000000000</BF_Milestone>
+        <BF_Milestone>0</BF_Milestone>
 		
 		<Flash_Parameter_Set>
 			<Flash_Technology>MLC</Flash_Technology>
