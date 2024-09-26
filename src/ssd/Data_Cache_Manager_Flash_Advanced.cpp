@@ -465,7 +465,7 @@ namespace SSD_Components
 				case Caching_Mode::READ_CACHE:
 				case Caching_Mode::WRITE_READ_CACHE:
 				{
-					if(((Data_Cache_Manager_Flash_Advanced*)_my_instance)->sectorLog == NULL){
+					if(((Data_Cache_Manager_Flash_Advanced*)_my_instance)->sectorLog == NULL || !(((Data_Cache_Manager_Flash_Advanced*)_my_instance)->sectorLog->at(transaction->Stream_id)->isAdoptingReadCache())){
 						((Data_Cache_Manager_Flash_Advanced*)_my_instance)->InsertReadPageMappedCache((NVM_Transaction_Flash_RD*)transaction);
 					}
 

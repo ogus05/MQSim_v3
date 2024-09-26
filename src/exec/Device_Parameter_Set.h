@@ -59,7 +59,9 @@ public:
 	static unsigned int SL_Max_Buffer_Size;
 	static unsigned int SL_Max_Block_Count;
 	static unsigned int SL_Sub_Page_Capacity;
-	static sim_time_type BF_Milestone; 
+	static sim_time_type BF_Milestone;
+
+	static bool SL_ReadCache;
 
 	void XML_serialize(Utils::XmlWriter& xmlwriter);
 	void XML_deserialize(rapidxml::xml_node<> *node);

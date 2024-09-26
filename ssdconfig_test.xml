@@ -53,9 +53,10 @@
 		<Chip_No_Per_Channel>2</Chip_No_Per_Channel>
 		<Flash_Comm_Protocol>NVDDR2</Flash_Comm_Protocol>
 
-		<SL_Max_Block_Count>8192</SL_Max_Block_Count>
-		<SL_Max_Buffer_Size>67108864</SL_Max_Buffer_Size>
+		<SL_Max_Block_Count>12288</SL_Max_Block_Count>
+		<SL_Max_Buffer_Size>16384</SL_Max_Buffer_Size>
 		<SL_Sub_Page_Capacity>4096</SL_Sub_Page_Unit>
+		<SL_ReadCache>false</SL_ReadCache>
         <BF_Milestone>0</BF_Milestone>
 		
 		<Flash_Parameter_Set>
@@ -76,7 +77,7 @@
 			<Suspend_Program_Time>800000</Suspend_Program_Time>
 			
 			<Die_No_Per_Chip>2</Die_No_Per_Chip>
-			<Plane_No_Per_Die>2</Plane_No_Per_Die>
+			<Plane_No_Per_Die>4</Plane_No_Per_Die>
 			<Block_No_Per_Plane>1024</Block_No_Per_Plane>
 			<Page_No_Per_Block>256</Page_No_Per_Block>
 			<Page_Capacity>16384</Page_Capacity>

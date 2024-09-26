@@ -48,6 +48,8 @@ unsigned int Device_Parameter_Set::SL_Max_Buffer_Size = 4096;
 unsigned int Device_Parameter_Set::SL_Sub_Page_Capacity = 4096;
 sim_time_type Device_Parameter_Set::BF_Milestone = sim_time_type(1e8);
 
+bool Device_Parameter_Set::SL_ReadCache = false;
+
 void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 {
 	std::string tmp;
@@ -390,6 +392,10 @@ void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 	val = std::to_string(BF_Milestone);
 	xmlwriter.Write_attribute_string(attr, val);
 
+	attr = "SL_ReadCache";
+	val = (SL_ReadCache ? "true" : "false");
+	xmlwriter.Write_attribute_string(attr, val);
+
 
 	Flash_Parameters.XML_serialize(xmlwriter);
 
@@ -660,6 +666,16 @@ void Device_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
 				BF_Milestone = std::stoull(val);
 			} else if (strcmp(param->name(), "Flash_Parameter_Set") == 0){
 				Flash_Parameters.XML_deserialize(param);
+			} else if (strcmp(param->name(), "SL_ReadCache") == 0) {
+				std::string val = param->value();
+				std::transform(val.begin(), val.end(), val.begin(), ::toupper);
+				if (strcmp(val.c_str(), "TRUE") == 0) {
+					SL_ReadCache = true;
+				} else if (strcmp(val.c_str(), "FALSE") == 0) {
+					SL_ReadCache = false;
+				} else {
+					PRINT_ERROR("Unknown Sector Log Read Cache")
+				}
 			}
 		}
 	}

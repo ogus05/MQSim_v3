@@ -10,7 +10,7 @@ namespace SSD_Components
 {
     SectorLog* SectorLog::instance = NULL;
     SectorLog::SectorLog(const stream_id_type in_streamID, const uint32_t in_subPagesPerPage, const uint32_t in_pagesPerBlock, const uint32_t in_maxBlockSize, const uint32_t in_sectorCacheCapacity, const uint32_t in_subPageUnit,
-    Address_Mapping_Unit_Page_Level *in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors){
+    Address_Mapping_Unit_Page_Level *in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors, const bool in_adoptReadCache){
         
         SubPageCalculator::subPageUnit = in_subPageUnit;
         maxBlockSize = in_maxBlockSize;        //in_maxBlockSize;
@@ -25,6 +25,8 @@ namespace SSD_Components
         sectorMap = new SectorMap(this, maxBlockSize);
         pageBuffer = new PageBuffer(in_sectorCacheCapacity / (in_subPageUnit * SECTOR_SIZE_IN_BYTE));
         bitFilter = new BitFilter(BF_Milestone, this);
+
+        adoptReadCache = in_adoptReadCache;
     }
 
     SectorLog::~SectorLog()
@@ -202,6 +204,11 @@ namespace SSD_Components
         return sectorGroupAreaWrite;
     }
 
+    bool SectorLog::isAdoptingReadCache()
+    {
+        return adoptReadCache;
+    }
+
     bool SectorLog::checkFlushIsRequired(uint32_t sizeToWriteInSectors)
     {
         while(pageBuffer->getFreeSpace() < (sizeToWriteInSectors / SubPageCalculator::subPageUnit)){
@@ -376,16 +383,18 @@ namespace SSD_Components
     void SectorLog::sectorGroupAreaReadHandler(NVM_Transaction_Flash_RD* tr)
     {
         std::list<key_type> subPageList = tr->readingSubPages;
-        for(auto it = subPageList.begin(); it != subPageList.end(); ){
-            if(sectorMap->getPageForKey((*it)) != NULL){
-                if(pageBuffer->Exists((*it), 1)){
-                    pageBuffer->updateData((*it), 0);
+        if(isAdoptingReadCache()){
+            for(auto it = subPageList.begin(); it != subPageList.end(); ){
+                if(sectorMap->getPageForKey((*it)) != NULL){
+                    if(pageBuffer->Exists((*it), 1)){
+                        pageBuffer->updateData((*it), 0);
+                    } else{
+                        pageBuffer->insertData((*it), 0);
+                    }
+                    it++;
                 } else{
-                    pageBuffer->insertData((*it), 0);
+                    subPageList.erase(it++);
                 }
-                it++;
-            } else{
-                subPageList.erase(it++);
             }
         }
 

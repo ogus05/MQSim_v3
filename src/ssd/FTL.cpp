@@ -910,6 +910,8 @@ namespace SSD_Components
 		xmlwriter.Write_attribute_string_inline(attr, val);
 
 		xmlwriter.Write_end_element_tag();
+
+		BlockManager->RecordStats2();
 	}
 
     void FTL::Clear_Stats()

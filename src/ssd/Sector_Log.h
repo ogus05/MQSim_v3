@@ -57,6 +57,7 @@ namespace SSD_Components{
         std::list<std::list<NVM_Transaction_Flash*>*> pendingReadTrListWhileClustering;
         std::set<User_Request*> pendingWriteReqListWhileClustering;
 
+        bool adoptReadCache;
 
         void sendAMUWriteForMerge(std::list<key_type>& subPageList, NVM_Transaction_Flash_ER* eraseTr);
         void sendSubPageWriteForClustering(std::list<SubPageCluster*>& subPageList);
@@ -72,13 +73,10 @@ namespace SSD_Components{
         void sectorGroupAreaReadHandler(NVM_Transaction_Flash_RD* tr);
 
         static uint32_t getNextID();
-
-
-
     public:
         void(*dcmServicedTransactionHandler)(NVM_Transaction_Flash*);
         SectorLog(const stream_id_type in_streamID, const uint32_t in_subPagesPerPage, const uint32_t in_pagesPerBlock, const uint32_t in_maxBlockSize, const uint32_t in_sectorCacheCapacity, const uint32_t in_subPageUnit,
-        Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors);
+        Address_Mapping_Unit_Page_Level* in_amu, TSU_Base* in_tsu, Data_Cache_Manager_Base* in_dcm, sim_time_type BF_Milestone, const uint64_t numberOfLogicalSectors, const bool in_adoptReadCache);
         ~SectorLog();
         void setCompleteTrHandler(void(*transferCompletedTrToDCM)(NVM_Transaction_Flash*));
         void servicedFromDRAMTrHandler(Memory_Transfer_Info* info);
@@ -96,6 +94,8 @@ namespace SSD_Components{
         void handleWaitingReqsWhileClustering();
 
         NVM_Transaction_Flash_WR* getFlushTransaction();
+
+        bool isAdoptingReadCache();
     };
 }
 

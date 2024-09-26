@@ -33,6 +33,7 @@ private:
     static sim_time_type loggingMilestone;
     static sim_time_type nextLoggingTime;
 
+    static FILE* F_REMAIN_FREE_BLOCK;
 public:
     static void Init_Stats2();
     static void Reset_Stats2();
@@ -46,6 +47,9 @@ public:
     static void setLoggingMilestone(sim_time_type loggingMilestone);
     static bool addShortTermLogging(sim_time_type STAT_sum_device_response_time_read_short_term, sim_time_type STAT_sum_device_response_time_write_short_term, sim_time_type STAT_sum_device_response_time_short_term,
         uint32_t STAT_serviced_read_request_count_short_term, uint32_t STAT_serviced_write_request_count_short_term, uint32_t STAT_serviced_request_count_short_term);
+
+    static void addBlockCount(uint64_t channelID, uint64_t chipID, uint64_t dieID, uint64_t planeID, uint64_t fullPageMappedBlockCount, uint64_t partialPageMappedBlockCount, uint64_t freeBlockCount);
+
 };
 
 #endif

@@ -371,7 +371,7 @@ SSD_Device::SSD_Device(Device_Parameter_Set *parameters, std::vector<IO_Flow_Par
 			sectorLog = new std::vector<SSD_Components::SectorLog*>();
 			for(uint32_t i = 0; i < stream_count; i++){
 				sectorLog->push_back(new SSD_Components::SectorLog(i, parameters->Flash_Parameters.Page_Capacity / parameters->SL_Sub_Page_Capacity, parameters->Flash_Parameters.Page_No_Per_Block, parameters->SL_Max_Block_Count, parameters->SL_Max_Buffer_Size, parameters->SL_Sub_Page_Capacity / SECTOR_SIZE_IN_BYTE,
-					(SSD_Components::Address_Mapping_Unit_Page_Level*)amu, tsu, dcm, parameters->BF_Milestone, Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count()));
+					(SSD_Components::Address_Mapping_Unit_Page_Level*)amu, tsu, dcm, parameters->BF_Milestone, Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count(), parameters->SL_ReadCache));
 			}
 		}
 		dcm->connectSectorLog(sectorLog);

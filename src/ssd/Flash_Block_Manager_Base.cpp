@@ -1,4 +1,5 @@
 #include "Flash_Block_Manager.h"
+#include "Flash_Block_Manager_Base.h"
 
 
 namespace SSD_Components
@@ -241,5 +242,32 @@ namespace SSD_Components
 			return true;
 		}
 		return false;
+	}
+	void SSD_Components::Flash_Block_Manager_Base::RecordStats2()
+	{
+		for (unsigned int channel_id = 0; channel_id < channel_count; channel_id++) {
+			for (unsigned int chip_id = 0; chip_id < chip_no_per_channel; chip_id++) {
+				for (unsigned int die_id = 0; die_id < die_no_per_chip; die_id++) {
+					for (unsigned int plane_id = 0; plane_id < plane_no_per_die; plane_id++) {
+						uint64_t partialPageMappedBlockCount = 0;
+						uint64_t fullPageMappedBlockCount = 0;
+						uint64_t freeBlockCount = plane_manager[channel_id][chip_id][die_id][plane_id].Get_free_block_pool_size();
+						for (unsigned int blockID = 0; blockID < block_no_per_plane; blockID++) {
+							
+							Block_Pool_Slot_Type* block = &plane_manager[channel_id][chip_id][die_id][plane_id].Blocks[blockID];
+							
+							if(block->Current_page_write_index > 0){
+								if(block->Holds_sector_data > 0){
+									partialPageMappedBlockCount++;
+								} else{
+									fullPageMappedBlockCount++;
+								}
+							}
+						}
+						Stats2::addBlockCount(channel_id, chip_id, die_id, plane_id, fullPageMappedBlockCount, partialPageMappedBlockCount, freeBlockCount);
+					}
+				}
+			}
+		}
 	}
 }

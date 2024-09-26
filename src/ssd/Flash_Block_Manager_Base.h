@@ -100,7 +100,8 @@ namespace SSD_Components
 		bool Is_page_valid(Block_Pool_Slot_Type* block, flash_page_ID_type page_id);//Make the page invalid in the block bookkeeping record
 	
 		virtual bool isBlockFull(const NVM::FlashMemory::Physical_Page_Address& blockAddr) = 0;
-	
+
+		void RecordStats2();
 	protected:
 		PlaneBookKeepingType ****plane_manager;//Keeps track of plane block usage information
 		GC_and_WL_Unit_Base *gc_and_wl_unit;
