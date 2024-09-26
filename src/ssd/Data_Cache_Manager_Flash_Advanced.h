@@ -26,7 +26,7 @@ namespace SSD_Components
 			|     DRAM Data_Cache_Flash Main Data Space                   |   Back Pressure Space  | ---------->To the flash backend
 			 --------------------------------------------------|------------------------
 	*/
-	class Data_Cache_Manager_Flash_Advanced : public Data_Cache_Manager_Base
+	class Data_Cache_Manager_Flash_Advanced : public Data_Cache_Manager_Base, private MQSimEngine::QTComp
 	{
 	public:
 		Data_Cache_Manager_Flash_Advanced(const sim_object_id_type& id, Host_Interface_Base* host_interface, NVM_Firmware* firmware, NVM_PHY_ONFI* flash_controller,
@@ -35,6 +35,7 @@ namespace SSD_Components
 			Caching_Mode* caching_mode_per_input_stream, Cache_Sharing_Mode sharing_mode, 
 			unsigned int stream_count, unsigned int sector_no_per_page, unsigned int back_pressure_buffer_max_depth);
 		~Data_Cache_Manager_Flash_Advanced();
+		void Start_simulation();
 		void Execute_simulator_event(MQSimEngine::Sim_Event* ev);
 		void Setup_triggers();
 		void Do_warmup(std::vector<Utils::Workload_Statistics*> workload_stats);
@@ -59,6 +60,9 @@ namespace SSD_Components
 
 		static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);
 		void service_dram_access_request(Memory_Transfer_Info* request_info);
+
+		virtual void addQTComp(MQSimEngine::QTSender* sender) override;
+
 	};
 }
 

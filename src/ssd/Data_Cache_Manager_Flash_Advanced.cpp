@@ -4,7 +4,6 @@
 #include "NVM_Transaction_Flash_RD.h"
 #include "NVM_Transaction_Flash_WR.h"
 #include "FTL.h"
-#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -94,7 +93,11 @@ namespace SSD_Components
 		delete[] bloom_filter;
 	}
 
-	void Data_Cache_Manager_Flash_Advanced::Setup_triggers()
+    void Data_Cache_Manager_Flash_Advanced::Start_simulation()
+    {
+    }
+
+    void Data_Cache_Manager_Flash_Advanced::Setup_triggers()
 	{
 		Data_Cache_Manager_Base::Setup_triggers();
 		static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->ConnectDCMServiedTransactionHandler(handle_transaction_serviced_signal_from_PHY);
@@ -222,9 +225,6 @@ namespace SSD_Components
 								it++;
 							} else {
 								it++;
-							}
-							if(!handleAllSectors){
-								Stats2::handleCache(tr->Data_and_metadata_size_in_byte / SECTOR_SIZE_IN_BYTE);
 							}
 						} else {
 							it++;
@@ -554,7 +554,33 @@ namespace SSD_Components
 		}
 	}
 
-	void Data_Cache_Manager_Flash_Advanced::Execute_simulator_event(MQSimEngine::Sim_Event* ev)
+    void Data_Cache_Manager_Flash_Advanced::addQTComp(MQSimEngine::QTSender *sender)
+    {
+		std::string ancestorGroupName = "Data Cache Layer";
+		const int ancestorUniqueValue = sender->AddGroup(ancestorGroupName);
+
+		for(int i = 0; i < stream_count; i++){
+			int streamUniqueValue = ancestorUniqueValue;
+			if(stream_count != 1){
+				std::string streamGroupName = ("Stream " + std::to_string(i));
+				streamUniqueValue = sender->AddGroup(streamGroupName, ancestorUniqueValue);
+			}
+
+			sender->AddFunc([&, fixed_stream = i]() -> size_t {
+				return waiting_user_requests_queue_for_dram_free_slot[fixed_stream].size();
+			}, "Wait for dram free slot", streamUniqueValue);
+
+			sender->AddFunc([&, fixed_stream = i]() -> size_t {
+				if(shared_dram_request_queue == true){
+					return back_pressure_buffer_depth[0] / stream_count;
+				} else{
+					return back_pressure_buffer_depth[fixed_stream];
+				}
+			}, "Sectors on processing", streamUniqueValue);
+		}
+    }
+
+    void Data_Cache_Manager_Flash_Advanced::Execute_simulator_event(MQSimEngine::Sim_Event* ev)
 	{
 		Data_Cache_Simulation_Event_Type eventType = (Data_Cache_Simulation_Event_Type)ev->Type;
 		Memory_Transfer_Info* transfer_info = (Memory_Transfer_Info*)ev->Parameters;

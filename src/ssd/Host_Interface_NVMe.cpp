@@ -3,10 +3,18 @@
 #include "Host_Interface_NVMe.h"
 #include "NVM_Transaction_Flash_RD.h"
 #include "NVM_Transaction_Flash_WR.h"
-#include "Stats2.h"
 
 namespace SSD_Components
 {
+Input_Stream_NVMe::Input_Stream_NVMe(IO_Flow_Priority_Class::Priority priority_class, LHA_type start_logical_sector_address, LHA_type end_logical_sector_address, uint64_t submission_queue_base_address, uint16_t submission_queue_size, uint64_t completion_queue_base_address, uint16_t completion_queue_size) : Input_Stream_Base(),
+																								Priority_class(priority_class),
+																								Start_logical_sector_address(start_logical_sector_address), End_logical_sector_address(end_logical_sector_address),
+																								Submission_queue_base_address(submission_queue_base_address), Submission_queue_size(submission_queue_size),
+																								Completion_queue_base_address(completion_queue_base_address), Completion_queue_size(completion_queue_size),
+																								Submission_head(0), Submission_head_informed_to_host(0), Submission_tail(0), Completion_head(0), Completion_tail(0), On_the_fly_requests(0) {
+																								
+}
+
 Input_Stream_NVMe::~Input_Stream_NVMe()
 {
 	for (auto &user_request : Waiting_user_requests)
@@ -168,6 +176,28 @@ inline void Input_Stream_Manager_NVMe::inform_host_request_completed(stream_id_t
 	}
 }
 
+void Input_Stream_Manager_NVMe::addQTComp(MQSimEngine::QTSender* sender)
+{
+	std::string ancestorGroupName = "Host Interface";
+	const int ancestorUniqueValue = sender->AddGroup(ancestorGroupName);
+	
+	for(int i = 0; i < input_streams.size(); i++){
+		int streamUniqueValue = ancestorUniqueValue;
+		if(input_streams.size() != 1){
+			std::string streamGroupName = ("Stream " + std::to_string(i));
+			streamUniqueValue = sender->AddGroup(streamGroupName, ancestorUniqueValue);
+		}
+
+		sender->AddFunc([&, input_stream = static_cast<Input_Stream_NVMe*>(input_streams[i])]() -> size_t {
+			return input_stream->On_the_fly_requests;
+		}, "On the fly reqs", streamUniqueValue);
+
+		sender->AddFunc([&, input_stream = static_cast<Input_Stream_NVMe*>(input_streams[i])]() -> size_t {
+			return input_stream->Completed_user_requests.size();
+		}, "Wait for CQ free space", streamUniqueValue);
+	}
+}
+
 void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 {
 	LHA_type lsa = user_request->Start_LBA;
@@ -202,7 +232,6 @@ void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 																				 transaction_size * SECTOR_SIZE_IN_BYTE, lpa, NO_PPA, user_request, user_request->Priority_class, 0, access_status_bitmap, CurrentTimeStamp);
 			user_request->Transaction_list.push_back(transaction);
 			input_streams[user_request->Stream_id]->STAT_number_of_read_transactions++;
-			Stats2::handleExternalTransaction(transaction_size, 0);
 		}
 		else
 		{ //user_request->Type == UserRequestType::WRITE
@@ -210,7 +239,6 @@ void Input_Stream_Manager_NVMe::segment_user_request(User_Request *user_request)
 																				 transaction_size * SECTOR_SIZE_IN_BYTE, lpa, user_request, user_request->Priority_class, 0, access_status_bitmap, CurrentTimeStamp);
 			user_request->Transaction_list.push_back(transaction);
 			input_streams[user_request->Stream_id]->STAT_number_of_write_transactions++;
-			Stats2::handleExternalTransaction(transaction_size, 1);
 		}
 
 		lsa = lsa + transaction_size;

@@ -9,7 +9,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 						   uint16_t nvme_submission_queue_size, uint16_t nvme_completion_queue_size,
 						   IO_Flow_Priority_Class::Priority priority_class, sim_time_type stop_time, double initial_occupancy_ratio, unsigned int total_requets_to_be_generated,
 						   HostInterface_Types SSD_device_type, PCIe_Root_Complex *pcie_root_complex, SATA_HBA *sata_hba,
-						   bool enabled_logging, sim_time_type logging_period, std::string logging_file_path) : MQSimEngine::Sim_Object(name), flow_id(flow_id), start_lsa_on_device(start_lsa_on_device), end_lsa_on_device(end_lsa_on_device), io_queue_id(io_queue_id),
+						   bool enabled_logging, sim_time_type logging_period, std::string logging_file_path, uint64_t QTSendCount) : MQSimEngine::Sim_Object(name), flow_id(flow_id), start_lsa_on_device(start_lsa_on_device), end_lsa_on_device(end_lsa_on_device), io_queue_id(io_queue_id),
 																												priority_class(priority_class), stop_time(stop_time), initial_occupancy_ratio(initial_occupancy_ratio), total_requests_to_be_generated(total_requets_to_be_generated), SSD_device_type(SSD_device_type), pcie_root_complex(pcie_root_complex), sata_hba(sata_hba),
 																												STAT_generated_request_count(0), STAT_generated_read_request_count(0), STAT_generated_write_request_count(0),
 																												STAT_ignored_request_count(0),
@@ -21,7 +21,7 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 																												STAT_min_request_delay(MAXIMUM_TIME), STAT_min_request_delay_read(MAXIMUM_TIME), STAT_min_request_delay_write(MAXIMUM_TIME),
 																												STAT_max_request_delay(0), STAT_max_request_delay_read(0), STAT_max_request_delay_write(0),
 																												STAT_transferred_bytes_total(0), STAT_transferred_bytes_read(0), STAT_transferred_bytes_write(0), progress(0), next_progress_step(0),
-																												enabled_logging(enabled_logging), logging_period(logging_period), logging_file_path(logging_file_path)
+																												enabled_logging(enabled_logging), logging_period(logging_period), logging_file_path(logging_file_path), QTSendCount(QTSendCount)
 {
 	Host_IO_Request *t = NULL;
 
@@ -133,7 +133,6 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			default:
 				PRINT_ERROR("Unsupported host interface type in IO_Flow_Base!")
 		}
-
 	}
 
 	void IO_Flow_Base::Start_simulation()
@@ -371,6 +370,8 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 			STAT_serviced_request_count_short_term = 0;
 			next_logging_milestone = Simulator->Time() + logging_period;
 		}
+
+		Simulator->QT_SendInfo(STAT_serviced_request_count);
 	}
 	
 	Submission_Queue_Entry* IO_Flow_Base::NVMe_read_sqe(uint64_t address)
@@ -537,8 +538,24 @@ IO_Flow_Base::IO_Flow_Base(const sim_object_id_type &name, uint16_t flow_id, LHA
 
 		return (uint32_t)(STAT_sum_request_delay_short_term / STAT_serviced_request_count_short_term / SIM_TIME_TO_MICROSECONDS_COEFF);
 	}
-	
-	void IO_Flow_Base::Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter)
+
+    void IO_Flow_Base::addQTComp(MQSimEngine::QTSender *sender)
+    {
+		std::string ancestorGroupName = "IO Flow";
+
+		const int ancestorUniqueValue = sender->AddGroup(ancestorGroupName);
+		
+		sender->AddFunc([&]() -> size_t {
+			return waiting_requests.size();
+		}, "Wait for SQ free space", ancestorUniqueValue);
+
+		sender->AddFunc([&]() -> size_t {
+			return request_queue_in_memory.size();
+		}, "Req in SQ", ancestorUniqueValue);
+    }
+
+
+    void IO_Flow_Base::Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter)
 	{
 		std::string tmp = name_prefix + ".IO_Flow";
 		xmlwriter.Write_open_tag(tmp);

@@ -85,7 +85,7 @@ namespace SSD_Components
 		void PrepareResume() { HasSuspend = false; }
 	};
 
-	class NVM_PHY_ONFI_NVDDR2 : public NVM_PHY_ONFI
+	class NVM_PHY_ONFI_NVDDR2 : public NVM_PHY_ONFI, private MQSimEngine::QTComp
 	{
 	public:
 		NVM_PHY_ONFI_NVDDR2(const sim_object_id_type& id, ONFI_Channel_NVDDR2** channels,
@@ -109,6 +109,7 @@ namespace SSD_Components
 		NVM_Transaction_Flash* Is_chip_busy_with_stream(NVM_Transaction_Flash* transaction);
 		bool Is_chip_busy(NVM_Transaction_Flash* transaction);
 		void Change_memory_status_preconditioning(const NVM::NVM_Memory_Address* address, const void* status_info);
+		virtual void addQTComp(MQSimEngine::QTSender* sender) override;
 	private:
 		void transfer_read_data_from_chip(ChipBookKeepingEntry* chipBKE, DieBookKeepingEntry* dieBKE, NVM_Transaction_Flash* tr);
 		void perform_interleaved_cmd_data_transfer(NVM::FlashMemory::Flash_Chip* chip, DieBookKeepingEntry* bookKeepingEntry);
@@ -120,6 +121,7 @@ namespace SSD_Components
 		ChipBookKeepingEntry** bookKeepingTable;
 		Flash_Transaction_Queue *WaitingReadTX, *WaitingGCRead_TX, *WaitingMappingRead_TX;
 		std::list<DieBookKeepingEntry*> *WaitingCopybackWrites;
+
 	};
 }
 

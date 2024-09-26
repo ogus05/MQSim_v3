@@ -9,6 +9,7 @@ namespace MQSimEngine
 	Engine* Engine::Instance() {
 		if (_instance == 0) {
 			_instance = new Engine;
+			_instance->QT_InitSender();
 		}
 		return _instance;
 	}
@@ -76,6 +77,9 @@ namespace MQSimEngine
 			++obj) {
 			obj->second->Start_simulation();
 		}
+
+		QT_Sender->SendConnPacket();
+		QT_Sender->SendCompInfoPacket(0);
 		
 		Sim_Event* ev = NULL;
 		while (true) {
@@ -101,6 +105,12 @@ namespace MQSimEngine
 				delete consumed_event;
 			}
 			_EventList->Remove(minNode);
+		}
+
+
+		if(QT_Sender != nullptr){
+			QT_Sender->SendCompInfoPacket();
+			QT_Sender->SendDisconnPacket();
 		}
 	}
 
@@ -137,16 +147,63 @@ namespace MQSimEngine
 		return false;
 	}
 
-    void Engine::AttachClearStats(void (*ClearStats)())
+    void Engine::AttatchClearStats(void (*ClearStats)())
     {
 		this->ClearStats = ClearStats;
     }
 
-    void Engine::Finish_LoadPhase(sim_time_type time, Sim_Object* io_flow)
+    void Engine::Start_LoadPhase()
     {
+		loadPhase = true;
+    }
+
+    void Engine::Finish_LoadPhase(sim_time_type time, Sim_Object *io_flow)
+    {
+		loadPhase = false;
         this->waitingRunPhaseFlowList.push_back({time, io_flow});
 		waitingLoadPhaseFinish = true;
     }
+    void Engine::AddQTComp(QTComp *comp)
+    {
+		if(QT_Sender != nullptr){
+			QT_Sender->AddQTComp(comp);
+		}
+    }
+
+    void Engine::QT_SendInfo(const uint64_t &curReqCount)
+    {
+		if(QT_Sender != nullptr && !(loadPhase || waitingLoadPhaseFinish)){
+			QT_Sender->SendCompInfoPacket(curReqCount);
+		}
+    }
+    void Engine::QT_InitSender()
+    {
+		QT_Sender = new QTSender();
+		int isQTDisplay = QT_Sender->Start();
+
+		switch(isQTDisplay){
+			case DONT_SEND:
+				delete QT_Sender;
+				QT_Sender = nullptr;
+				break;
+			case SEND_BLOCKED:
+				delete QT_Sender;
+				exit(1);
+				break;
+			case SEND_ALLOWED:
+				break;
+			default:
+				PRINT_ERROR("Setting up process of QT Sender has been crashed.")
+		}
+    }
+
+    void Engine::QT_SetMilestone(const uint64_t &totalReqs, const uint64_t& QTSendCount)
+    {
+		if(QT_Sender != nullptr){
+			QT_Sender->SetMilestone(totalReqs, QTSendCount);
+		}
+    }
+
     void Engine::Start_RunPhase()
     {
 		waitingLoadPhaseFinish = false;

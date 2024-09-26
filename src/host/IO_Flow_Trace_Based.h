@@ -16,7 +16,7 @@ public:
 						uint16_t nvme_submission_queue_size, uint16_t nvme_completion_queue_size, IO_Flow_Priority_Class::Priority priority_class, double initial_occupancy_ratio,
 						std::string load_trace_file_path, std::string trace_file_path, Trace_Time_Unit time_unit, unsigned int total_replay_count, unsigned int percentage_to_be_simulated,
 						HostInterface_Types SSD_device_type, PCIe_Root_Complex *pcie_root_complex, SATA_HBA *sata_hba,
-						bool enabled_logging, sim_time_type logging_period, std::string logging_file_path);
+						bool enabled_logging, sim_time_type logging_period, std::string logging_file_path, uint64_t QT_SendCount);
 	~IO_Flow_Trace_Based();
 	Host_IO_Request *Generate_next_request();
 	void NVMe_consume_io_request(Completion_Queue_Entry *);
@@ -31,7 +31,6 @@ private:
 	Trace_Time_Unit time_unit;
 	unsigned int percentage_to_be_simulated;
 
-	bool loadPhase = false;
 	bool loadPhaseExists = false;
 	std::string load_trace_file_path;
 	std::ifstream load_trace_file;

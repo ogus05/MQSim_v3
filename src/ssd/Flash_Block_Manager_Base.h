@@ -65,7 +65,7 @@ namespace SSD_Components
 		void Add_to_free_block_pool(Block_Pool_Slot_Type* block, bool consider_dynamic_wl);
 	};
 
-	class Flash_Block_Manager_Base
+	class Flash_Block_Manager_Base : private MQSimEngine::QTComp
 	{
 		friend class Address_Mapping_Unit_Page_Level;
 		friend class GC_and_WL_Unit_Page_Level;
@@ -108,6 +108,8 @@ namespace SSD_Components
 		unsigned int block_no_per_plane;
 		unsigned int pages_no_per_block;
 		void program_transaction_issued(const NVM::FlashMemory::Physical_Page_Address& page_address);//Updates the block bookkeeping record
+	
+		virtual void addQTComp(MQSimEngine::QTSender* sender) override;
 	};
 }
 

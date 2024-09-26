@@ -9,7 +9,7 @@ IO_Flow_Trace_Based::IO_Flow_Trace_Based(const sim_object_id_type &name, uint16_
 										 uint16_t nvme_submission_queue_size, uint16_t nvme_completion_queue_size, IO_Flow_Priority_Class::Priority priority_class, double initial_occupancy_ratio,
 										 std::string load_trace_file_path, std::string trace_file_path, Trace_Time_Unit time_unit, unsigned int total_replay_count, unsigned int percentage_to_be_simulated,
 										 HostInterface_Types SSD_device_type, PCIe_Root_Complex *pcie_root_complex, SATA_HBA *sata_hba,
-										 bool enabled_logging, sim_time_type logging_period, std::string logging_file_path) : IO_Flow_Base(name, flow_id, start_lsa_on_device, end_lsa_on_device, io_queue_id, nvme_submission_queue_size, nvme_completion_queue_size, priority_class, 0, initial_occupancy_ratio, 0, SSD_device_type, pcie_root_complex, sata_hba, enabled_logging, logging_period, logging_file_path),
+										 bool enabled_logging, sim_time_type logging_period, std::string logging_file_path, uint64_t QTSendCount) : IO_Flow_Base(name, flow_id, start_lsa_on_device, end_lsa_on_device, io_queue_id, nvme_submission_queue_size, nvme_completion_queue_size, priority_class, 0, initial_occupancy_ratio, 0, SSD_device_type, pcie_root_complex, sata_hba, enabled_logging, logging_period, logging_file_path, QTSendCount),
 																															  load_trace_file_path(load_trace_file_path), trace_file_path(trace_file_path), time_unit(time_unit), total_replay_no(total_replay_count), percentage_to_be_simulated(percentage_to_be_simulated),
 																															  total_requests_in_file(0), time_offset(0)
 {
@@ -85,11 +85,10 @@ void IO_Flow_Trace_Based::Start_simulation()
 	load_trace_file.open(load_trace_file_path, std::ios::in);
 	if(!load_trace_file.is_open()){
 		loadPhaseExists = false;
-		loadPhase = false;
 		PRINT_MESSAGE("Load Phase Undetected....")
 	} else{
 		loadPhaseExists = true;
-		loadPhase = true;
+		Simulator->Start_LoadPhase();
 		PRINT_MESSAGE("Load Phase Detected....")
 		sim_time_type last_request_arrival_time_1 = 0;
 		while (std::getline(load_trace_file, trace_line))
@@ -121,6 +120,7 @@ void IO_Flow_Trace_Based::Start_simulation()
 	}
 	PRINT_MESSAGE("Investigating input trace file: " << trace_file_path);
 
+	uint64_t totalReqsInRuntime = 0;
 	sim_time_type last_request_arrival_time_2 = 0;
 	while (std::getline(trace_file, trace_line))
 	{
@@ -132,6 +132,7 @@ void IO_Flow_Trace_Based::Start_simulation()
 			break;
 		}
 		total_requests_in_file++;
+		totalReqsInRuntime++;
 		sim_time_type prev_time = last_request_arrival_time_2;
 		last_request_arrival_time_2 = std::strtoll(current_trace_line[ASCIITraceTimeColumn].c_str(), &pEnd, 10);
 		if (last_request_arrival_time_2 < prev_time)
@@ -143,6 +144,8 @@ void IO_Flow_Trace_Based::Start_simulation()
 	trace_file.close();
 	PRINT_MESSAGE("Trace file: " << trace_file_path << " seems healthy");
 
+	Simulator->QT_SetMilestone(totalReqsInRuntime, QTSendCount);
+
 	if (total_replay_no == 1)
 	{
 		total_requests_to_be_generated = (int)(((double)percentage_to_be_simulated / 100) * total_requests_in_file);
@@ -153,7 +156,7 @@ void IO_Flow_Trace_Based::Start_simulation()
 	}
 
 	std::ifstream* curTraceFile;
-	if(loadPhase){
+	if(Simulator->loadPhase){
 		load_trace_file.open(load_trace_file_path);
 		current_trace_line.clear();
 		std::getline(load_trace_file, trace_line);
@@ -183,7 +186,7 @@ void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event *)
 	if (STAT_generated_request_count < total_requests_to_be_generated)
 	{
 		std::ifstream* curTraceFile;
-		if(loadPhase){
+		if(Simulator->loadPhase){
 			curTraceFile = &load_trace_file;
 		} else{
 			curTraceFile = &trace_file;
@@ -198,8 +201,7 @@ void IO_Flow_Trace_Based::Execute_simulator_event(MQSimEngine::Sim_Event *)
 		}
 		else
 		{
-			if(loadPhase){
-				loadPhase = false;
+			if(Simulator->loadPhase){
 				curTraceFile->close();
 				trace_file.open(trace_file_path);
 				curTraceFile = &trace_file;

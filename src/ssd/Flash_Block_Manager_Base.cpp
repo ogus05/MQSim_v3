@@ -203,9 +203,49 @@ namespace SSD_Components
 		PlaneBookKeepingType *plane_record = &plane_manager[page_address.ChannelID][page_address.ChipID][page_address.DieID][page_address.PlaneID];
 		plane_record->Blocks[page_address.BlockID].Ongoing_user_program_count++;
 	}
-	
-	void Flash_Block_Manager_Base::Read_transaction_issued(const NVM::FlashMemory::Physical_Page_Address& page_address)
-	{
+
+    void Flash_Block_Manager_Base::addQTComp(MQSimEngine::QTSender *sender)
+    {
+		std::string ancestorGroupName = "Flash Block Manager";
+		const int ancestorUniqueValue = sender->AddGroup(ancestorGroupName);
+
+		for(int channel = 0; channel < channel_count; channel++){
+			int channelUniqueValue = ancestorUniqueValue;
+			if(channel_count != 1){
+				std::string channelGroupName = ("Channel " + std::to_string(channel));
+				channelUniqueValue = sender->AddGroup(channelGroupName, ancestorUniqueValue);
+			}
+			for(int chip = 0; chip < chip_no_per_channel; chip++){
+				int chipUniqueValue = channelUniqueValue;
+				if(chip_no_per_channel != 1){
+					std::string chipGroupName = ("Chip " + std::to_string(chip));
+					chipUniqueValue = sender->AddGroup(chipGroupName, channelUniqueValue);
+				}
+				sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+					size_t value = 0;
+					for(int die = 0; die < die_no_per_chip; die++){
+						for(int plane = 0; plane < plane_no_per_die; plane++){
+							value += plane_manager[fixed_channel][fixed_chip][die][plane].Get_free_block_pool_size();
+						}
+					}
+					return value;
+				}, "Free Block", chipUniqueValue);
+
+				sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+					size_t value = 0;
+					for(int die = 0; die < die_no_per_chip; die++){
+						for(int plane = 0; plane < plane_no_per_die; plane++){
+							value += plane_manager[fixed_channel][fixed_chip][die][plane].Ongoing_erase_operations.size();
+						}
+					}
+					return value;
+				}, "Ongoing GC", chipUniqueValue);
+			}
+		}
+    }
+
+    void Flash_Block_Manager_Base::Read_transaction_issued(const NVM::FlashMemory::Physical_Page_Address &page_address)
+    {
 		PlaneBookKeepingType *plane_record = &plane_manager[page_address.ChannelID][page_address.ChipID][page_address.DieID][page_address.PlaneID];
 		plane_record->Blocks[page_address.BlockID].Ongoing_user_read_count++;
 	}

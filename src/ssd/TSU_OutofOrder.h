@@ -19,7 +19,7 @@ class FTL;
 	* 2. Program and erase suspension, similar to the proposal described in "G. Wu and X. He,
 	*    Reducing SSD read latency via NAND flash program and erase suspension, FAST 2012".
 	*/
-class TSU_OutOfOrder : public TSU_Base
+class TSU_OutOfOrder : public TSU_Base, private MQSimEngine::QTComp
 {
 public:
 	TSU_OutOfOrder(const sim_object_id_type &id, FTL *ftl,
@@ -55,6 +55,8 @@ private:
 	bool service_read_transaction(NVM::FlashMemory::Flash_Chip *chip);
 	bool service_write_transaction(NVM::FlashMemory::Flash_Chip *chip);
 	bool service_erase_transaction(NVM::FlashMemory::Flash_Chip *chip);
+
+    virtual void addQTComp(MQSimEngine::QTSender* sender) override;
 };
 } // namespace SSD_Components
 

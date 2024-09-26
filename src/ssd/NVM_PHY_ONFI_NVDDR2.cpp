@@ -74,6 +74,7 @@ namespace SSD_Components {
 
 	void NVM_PHY_ONFI_NVDDR2::Start_simulation()
 	{
+		
 	}
 
 	inline BusChannelStatus NVM_PHY_ONFI_NVDDR2::Get_channel_status(flash_channel_ID_type channelID)
@@ -338,7 +339,36 @@ namespace SSD_Components {
 		channels[((NVM::FlashMemory::Physical_Page_Address*)address)->ChannelID]->Chips[((NVM::FlashMemory::Physical_Page_Address*)address)->ChipID]->Change_memory_status_preconditioning(address, status_info);
 	}
 
-	void copy_read_data_to_transaction(NVM_Transaction_Flash_RD* read_transaction, NVM::FlashMemory::Flash_Command* command)
+    void NVM_PHY_ONFI_NVDDR2::addQTComp(MQSimEngine::QTSender *sender)
+    {
+		std::string ancestorGroupName = "NVM PHY ONFI";
+		const int ancestorUniqueValue = sender->AddGroup(ancestorGroupName);
+
+		for(int channel = 0; channel < channel_count; channel++){
+			int channelUniqueValue = ancestorUniqueValue;
+			if(channel_count != 1){
+				std::string channelGroupName = ("Channel " + std::to_string(channel));
+				channelUniqueValue = sender->AddGroup(channelGroupName, ancestorUniqueValue);
+			}
+			for(int chip = 0; chip < chip_no_per_channel; chip++){
+				int chipUniqueValue = channelUniqueValue;
+				if(chip_no_per_channel != 1){
+					std::string chipGroupName = ("Chip " + std::to_string(chip));
+					chipUniqueValue = sender->AddGroup(chipGroupName, channelUniqueValue);
+				}
+
+				sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+					return bookKeepingTable[fixed_channel][fixed_chip].WaitingReadTXCount;
+				}, "Wait for chip processing", chipUniqueValue);
+
+				sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+					return bookKeepingTable[fixed_channel][fixed_chip].No_of_active_dies;
+				}, "# of active dies", chipUniqueValue);
+			}
+		}
+    }
+
+    void copy_read_data_to_transaction(NVM_Transaction_Flash_RD* read_transaction, NVM::FlashMemory::Flash_Command* command)
 	{
 		int i = 0;
 		for (auto &address : command->Address) {
@@ -636,7 +666,7 @@ namespace SSD_Components {
 			_my_instance->broadcastChipIdleSignal(chip);
 	}
 
-	inline void NVM_PHY_ONFI_NVDDR2::transfer_read_data_from_chip(ChipBookKeepingEntry* chipBKE, DieBookKeepingEntry* dieBKE, NVM_Transaction_Flash* tr)
+    inline void NVM_PHY_ONFI_NVDDR2::transfer_read_data_from_chip(ChipBookKeepingEntry* chipBKE, DieBookKeepingEntry* dieBKE, NVM_Transaction_Flash* tr)
 	{
 		//DEBUG2("Chip " << tr->Address.ChannelID << ", " << tr->Address.ChipID << ": transfer read data started for LPA: " << tr->LPA)
 		dieBKE->ActiveTransfer = tr;

@@ -10,6 +10,8 @@ sim_time_type Host_Parameter_Set::ResponseTime_Logging_Period_Length = 400000;//
 std::string Host_Parameter_Set::Input_file_path;
 std::vector<IO_Flow_Parameter_Set*> Host_Parameter_Set::IO_Flow_Definitions;
 
+uint64_t Host_Parameter_Set::QTSendCount = 0;
+
 void Host_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 {
 	std::string tmp;
@@ -36,6 +38,10 @@ void Host_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 	val = std::to_string(ResponseTime_Logging_Period_Length);
 	xmlwriter.Write_attribute_string(attr, val);
 
+	attr = "QTSendCount";
+	val = std::to_string(QTSendCount);
+	xmlwriter.Write_attribute_string(attr, val);
+
 	xmlwriter.Write_close_tag();
 }
 
@@ -59,6 +65,9 @@ void Host_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
 			} else if (strcmp(param->name(), "ResponseTime_Logging_Period_Length") == 0) {
 				std::string val = param->value();
 				ResponseTime_Logging_Period_Length = std::stoul(val);
+			} else if (strcmp(param->name(), "QTSendCount") == 0) {
+				std::string val = param->value();
+				QTSendCount = std::stoul(val);
 			}
 		}
 	} catch (...) {

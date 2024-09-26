@@ -4,7 +4,6 @@
 #include "NVM_Transaction_Flash_RD.h"
 #include "NVM_Transaction_Flash_WR.h"
 #include "FTL.h"
-#include "Stats2.h"
 
 namespace SSD_Components
 {
@@ -85,9 +84,6 @@ namespace SSD_Components
 								it++;
 							} else {
 								it++;
-							}
-							if(!handleAllSectors){
-								Stats2::handleCache(tr->Data_and_metadata_size_in_byte / SECTOR_SIZE_IN_BYTE);
 							}
 						} else {
 							it++;

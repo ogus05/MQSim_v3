@@ -497,4 +497,49 @@ bool TSU_OutOfOrder::service_erase_transaction(NVM::FlashMemory::Flash_Chip *chi
 
 	return true;
 }
+void TSU_OutOfOrder::addQTComp(MQSimEngine::QTSender *sender)
+{
+	std::string ancestorGroupName = "TSU";
+	const int ancestorUniqueValue = sender->AddGroup(ancestorGroupName);
+
+	for(int channel = 0; channel < channel_count; channel++){
+		int channelUniqueValue = ancestorUniqueValue;
+		if(channel_count != 1){
+			std::string channelGroupName = ("Channel " + std::to_string(channel));
+			channelUniqueValue = sender->AddGroup(channelGroupName, ancestorUniqueValue);
+		}
+
+		for(int chip = 0; chip < chip_no_per_channel; chip++){
+			int chipUniqueValue = channelUniqueValue;
+			if(chip_no_per_channel != 1){
+				std::string chipGroupName = ("Chip " + std::to_string(chip));
+				chipUniqueValue = sender->AddGroup(chipGroupName, channelUniqueValue);
+			}
+
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return UserReadTRQueue[fixed_channel][fixed_chip].size();
+			}, "User Read", chipUniqueValue);
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return UserWriteTRQueue[fixed_channel][fixed_chip].size();
+			}, "User Write", chipUniqueValue);
+
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return GCReadTRQueue[fixed_channel][fixed_chip].size();
+			}, "GC Read", chipUniqueValue);
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return GCWriteTRQueue[fixed_channel][fixed_chip].size();
+			}, "GC Write", chipUniqueValue);
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return GCEraseTRQueue[fixed_channel][fixed_chip].size();
+			}, "GC Erase", chipUniqueValue);
+
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return MappingReadTRQueue[fixed_channel][fixed_chip].size();
+			}, "Mapping Read", chipUniqueValue);
+			sender->AddFunc([&, fixed_channel = channel, fixed_chip = chip]() -> size_t {
+				return MappingWriteTRQueue[fixed_channel][fixed_chip].size();
+			}, "Mapping Write", chipUniqueValue);
+		}
+	}
+}
 } // namespace SSD_Components

@@ -128,7 +128,7 @@ namespace SSD_Components
 		MVPN_type Total_translation_pages_no;
 	};
 
-	class Address_Mapping_Unit_Page_Level : public Address_Mapping_Unit_Base
+	class Address_Mapping_Unit_Page_Level : public Address_Mapping_Unit_Base, private MQSimEngine::QTComp
 	{
 		friend class GC_and_WL_Unit_Page_Level;
 	public:
@@ -197,6 +197,8 @@ namespace SSD_Components
 		void manage_mapping_transaction_facing_barrier(stream_id_type stream_id, MVPN_type mvpn, bool read);
 		bool is_lpa_locked_for_gc(stream_id_type stream_id, LPA_type lpa);
 		bool is_mvpn_locked_for_gc(stream_id_type stream_id, MVPN_type mvpn);
+
+		virtual void addQTComp(MQSimEngine::QTSender* sender) override;
 	};
 
 }

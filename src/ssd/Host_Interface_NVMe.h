@@ -16,12 +16,7 @@ class Input_Stream_NVMe : public Input_Stream_Base
 public:
 	Input_Stream_NVMe(IO_Flow_Priority_Class::Priority priority_class, LHA_type start_logical_sector_address, LHA_type end_logical_sector_address,
 					  uint64_t submission_queue_base_address, uint16_t submission_queue_size,
-					  uint64_t completion_queue_base_address, uint16_t completion_queue_size) : Input_Stream_Base(),
-																								Priority_class(priority_class),
-																								Start_logical_sector_address(start_logical_sector_address), End_logical_sector_address(end_logical_sector_address),
-																								Submission_queue_base_address(submission_queue_base_address), Submission_queue_size(submission_queue_size),
-																								Completion_queue_base_address(completion_queue_base_address), Completion_queue_size(completion_queue_size),
-																								Submission_head(0), Submission_head_informed_to_host(0), Submission_tail(0), Completion_head(0), Completion_tail(0), On_the_fly_requests(0) {}
+					  uint64_t completion_queue_base_address, uint16_t completion_queue_size);
 	~Input_Stream_NVMe();
 	IO_Flow_Priority_Class::Priority Priority_class;
 	LHA_type Start_logical_sector_address;
@@ -41,7 +36,7 @@ public:
 	uint16_t On_the_fly_requests;							// the number of requests that are either being fetch from host or waiting in the device queue
 };
 
-class Input_Stream_Manager_NVMe : public Input_Stream_Manager_Base
+class Input_Stream_Manager_NVMe : public Input_Stream_Manager_Base, private MQSimEngine::QTComp
 {
 public:
 	Input_Stream_Manager_NVMe(Host_Interface_Base *host_interface, uint16_t queue_fetch_szie);
@@ -58,6 +53,7 @@ public:
 	uint16_t Get_completion_queue_depth(stream_id_type stream_id);
 	IO_Flow_Priority_Class::Priority Get_priority_class(stream_id_type stream_id);
 
+	virtual void addQTComp(MQSimEngine::QTSender* sender) override;
 private:
 	void segment_user_request(User_Request *user_request);
 	void inform_host_request_completed(stream_id_type stream_id, User_Request *request);

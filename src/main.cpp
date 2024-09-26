@@ -9,7 +9,6 @@
 #include "exec/Host_System.h"
 #include "utils/rapidxml/rapidxml.hpp"
 #include "utils/DistributionTypes.h"
-#include "ssd/Stats2.h"
 
 using namespace std;
 
@@ -307,9 +306,7 @@ int main(int argc, char* argv[])
 		G_SSD = &ssd;
 		G_Host = &host;
 
-		Stats2::Init_Stats2(ssd_config_file_path, workload_defs_file_path);
-		
-		Simulator->AttachClearStats(ClearStatsFnc);
+		Simulator->AttatchClearStats(ClearStatsFnc);
 
 		
 		Simulator->Start_simulation();
@@ -317,8 +314,6 @@ int main(int argc, char* argv[])
 			delete *io_flow_def;
 		}
 		delete *io_scen;
-
-		Stats2::Clear_Stats2();
 
 		time_t end_time = time(0);
 		dt = ctime(&end_time);
